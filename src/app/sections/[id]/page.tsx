@@ -21,6 +21,10 @@ import {
   Download,
   Info,
   Sliders,
+  Edit,
+  Trash2,
+  Layers,
+  Lock,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -36,6 +40,9 @@ import {
 import { store } from '../../../lib/store';
 import { StatCard } from '../../../components/ui/StatCard';
 import { Badge } from '../../../components/ui/Badge';
+import { Modal } from '../../../components/ui/Modal';
+import { AdminLoginModal } from '../../../components/auth/AdminLoginModal';
+import { SubSection, SectionStatus } from '../../../types';
 import {
   formatCurrencyBDT,
   formatNumber,
@@ -59,9 +66,43 @@ export default function SectionDetailPage() {
   const [simShifts, setSimShifts] = useState<number>(2);
   const [simEfficiency, setSimEfficiency] = useState<number>(85);
 
+  // Authentication & Modal states
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(store.isAdminAuthenticated);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [postAuthAction, setPostAuthAction] = useState<'edit' | 'addSub' | null>(null);
+
+  // Section Edit Form Modal state
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editForm, setEditForm] = useState({
+    code: '',
+    name: '',
+    department: '',
+    description: '',
+    responsible_person: '',
+    photo_url: '',
+    status: 'Active' as SectionStatus,
+    target_oee: 85,
+    line_speed: '45 units/hr',
+    target_takt_time_sec: 50,
+  });
+
+  // Add Sub-Section Modal state
+  const [isAddSubModalOpen, setIsAddSubModalOpen] = useState(false);
+  const [newSubForm, setNewSubForm] = useState({
+    name: '',
+    code: '',
+    responsible_person: '',
+    target_sam: '' as string | number,
+    description: '',
+  });
+
   useEffect(() => {
     store.init();
-    const unsub = store.subscribe(() => setTick((t) => t + 1));
+    setIsAdminAuthenticated(store.isAdminAuthenticated);
+    const unsub = store.subscribe(() => {
+      setTick((t) => t + 1);
+      setIsAdminAuthenticated(store.isAdminAuthenticated);
+    });
     return unsub;
   }, []);
 
@@ -135,6 +176,87 @@ export default function SectionDetailPage() {
     ]);
   };
 
+  // Section & Sub-Section Actions
+  const handleOpenEdit = () => {
+    if (!store.isAdminAuthenticated) {
+      setPostAuthAction('edit');
+      setIsAuthModalOpen(true);
+      return;
+    }
+    if (section) {
+      setEditForm({
+        code: section.code,
+        name: section.name,
+        department: section.department,
+        description: section.description || '',
+        responsible_person: section.responsible_person || '',
+        photo_url: section.photo_url || '',
+        status: section.status,
+        target_oee: section.target_oee ?? 85,
+        line_speed: section.line_speed || '45 units/hr',
+        target_takt_time_sec: section.target_takt_time_sec ?? 50,
+      });
+      setIsEditModalOpen(true);
+    }
+  };
+
+  const handleOpenAddSub = () => {
+    if (!store.isAdminAuthenticated) {
+      setPostAuthAction('addSub');
+      setIsAuthModalOpen(true);
+      return;
+    }
+    const currentSubs = section?.sub_sections?.length || 0;
+    setNewSubForm({
+      name: '',
+      code: `SUB-${currentSubs + 1}`,
+      responsible_person: section?.responsible_person || '',
+      target_sam: 45,
+      description: '',
+    });
+    setIsAddSubModalOpen(true);
+  };
+
+  const handleAuthSuccess = () => {
+    if (postAuthAction === 'edit') {
+      handleOpenEdit();
+    } else if (postAuthAction === 'addSub') {
+      handleOpenAddSub();
+    }
+    setPostAuthAction(null);
+  };
+
+  const handleSaveEdit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!section) return;
+    store.updateSection(section.id, {
+      code: editForm.code,
+      name: editForm.name,
+      department: editForm.department,
+      description: editForm.description,
+      responsible_person: editForm.responsible_person,
+      photo_url: editForm.photo_url,
+      status: editForm.status,
+      target_oee: Number(editForm.target_oee) || undefined,
+      line_speed: editForm.line_speed || undefined,
+      target_takt_time_sec: Number(editForm.target_takt_time_sec) || undefined,
+    });
+    setIsEditModalOpen(false);
+  };
+
+  const handleSaveSubSection = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!section || !newSubForm.name.trim()) return;
+    store.addSubSection(section.id, {
+      name: newSubForm.name.trim(),
+      code: newSubForm.code.trim() || `SUB-${Date.now()}`,
+      responsible_person: newSubForm.responsible_person.trim() || undefined,
+      target_sam: newSubForm.target_sam ? Number(newSubForm.target_sam) : undefined,
+      description: newSubForm.description.trim() || undefined,
+    });
+    setIsAddSubModalOpen(false);
+  };
+
   const tabs: { id: ActiveTab; label: string; count?: number; icon: any }[] = [
     { id: 'overview', label: 'Overview', icon: Grid },
     { id: 'machines', label: 'Machines', count: machines.length, icon: Cpu },
@@ -188,23 +310,60 @@ export default function SectionDetailPage() {
             <p className="text-xs text-slate-600 max-w-3xl leading-relaxed">
               {section.description}
             </p>
-            {section.responsible_person && (
-              <p className="text-xs text-blue-700 font-semibold pt-1">
-                Line In-Charge: {section.responsible_person}
-              </p>
-            )}
+            <div className="flex flex-wrap items-center gap-2 pt-2">
+              {section.responsible_person && (
+                <span className="inline-flex items-center rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-800 border border-slate-200">
+                  Line In-Charge: {section.responsible_person}
+                </span>
+              )}
+              <span className="inline-flex items-center rounded-lg bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 border border-emerald-200">
+                Target OEE: {section.target_oee || 85}%
+              </span>
+              <span className="inline-flex items-center rounded-lg bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700 border border-blue-200">
+                Speed: {section.line_speed || '45 units/hr'}
+              </span>
+              <span className="inline-flex items-center rounded-lg bg-purple-50 px-2.5 py-1 text-xs font-semibold text-purple-700 border border-purple-200">
+                Takt Time: {section.target_takt_time_sec || 50}s
+              </span>
+            </div>
           </div>
 
-          {section.photo_url && (
-            <div className="relative h-28 w-44 shrink-0 rounded-xl overflow-hidden border border-slate-200 shadow-xs hidden sm:block">
-              <img src={section.photo_url} alt="" className="h-full w-full object-cover" />
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 shrink-0">
+            {section.photo_url && (
+              <div className="relative h-28 w-44 shrink-0 rounded-xl overflow-hidden border border-slate-200 shadow-xs hidden md:block">
+                <img src={section.photo_url} alt="" className="h-full w-full object-cover" />
+              </div>
+            )}
+            <div className="flex sm:flex-col gap-2 w-full sm:w-auto">
+              <button
+                onClick={handleOpenEdit}
+                className="flex-1 sm:flex-initial inline-flex items-center justify-center rounded-xl bg-blue-600 px-3.5 py-2 text-xs font-bold text-white hover:bg-blue-500 shadow-xs transition cursor-pointer"
+              >
+                <Edit className="mr-1.5 h-3.5 w-3.5" />
+                Edit Section
+              </button>
+              <button
+                onClick={handleOpenAddSub}
+                className="flex-1 sm:flex-initial inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 shadow-2xs transition cursor-pointer"
+              >
+                <Plus className="mr-1.5 h-3.5 w-3.5 text-blue-600" />
+                Add Sub-Section
+              </button>
             </div>
-          )}
+          </div>
         </div>
       </div>
 
       {/* Overview Top Metric Cards */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-2xs">
+          <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Sub-Sections</p>
+          <h4 className="mt-1 text-2xl font-extrabold text-indigo-600">
+            {section.sub_sections?.length || 0}
+          </h4>
+          <p className="text-[10px] text-slate-400 mt-0.5">Production Cells</p>
+        </div>
+
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-2xs">
           <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Machines</p>
           <h4 className="mt-1 text-2xl font-extrabold text-slate-900">{machines.length}</h4>
@@ -217,12 +376,6 @@ export default function SectionDetailPage() {
           <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Processes</p>
           <h4 className="mt-1 text-2xl font-extrabold text-slate-900">{processes.length}</h4>
           <p className="text-[10px] text-slate-400 mt-0.5">Line Stations</p>
-        </div>
-
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-2xs">
-          <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Manpower</p>
-          <h4 className="mt-1 text-2xl font-extrabold text-slate-900">{totalOperators}</h4>
-          <p className="text-[10px] text-slate-400 mt-0.5">Station Operators</p>
         </div>
 
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-2xs">
@@ -285,6 +438,80 @@ export default function SectionDetailPage() {
       {/* 1. Overview Tab */}
       {activeTab === 'overview' && (
         <div className="space-y-6">
+          {/* Sub-Sections & Work Cells Section */}
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-bold uppercase tracking-wider text-slate-900 flex items-center">
+                  <Layers className="mr-2 h-4 w-4 text-indigo-600" />
+                  Sub-Sections & Production Cells ({section.sub_sections?.length || 0})
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Functional work cells, sub-assemblies, and buffer zones inside {section.name}
+                </p>
+              </div>
+              <button
+                onClick={handleOpenAddSub}
+                className="inline-flex items-center rounded-lg bg-indigo-50 px-3 py-1.5 text-xs font-bold text-indigo-700 hover:bg-indigo-100 transition cursor-pointer"
+              >
+                <Plus className="mr-1 h-3.5 w-3.5" />
+                Add Sub-Section
+              </button>
+            </div>
+
+            {section.sub_sections && section.sub_sections.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {section.sub_sections.map((sub) => (
+                  <div
+                    key={sub.id}
+                    className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white hover:shadow-md transition flex flex-col justify-between"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between">
+                        <span className="font-mono text-[11px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
+                          {sub.code}
+                        </span>
+                        {store.isAdminAuthenticated && (
+                          <button
+                            onClick={() => {
+                              if (confirm(`Remove sub-section "${sub.name}"?`)) {
+                                store.deleteSubSection(section.id, sub.id);
+                              }
+                            }}
+                            className="text-slate-400 hover:text-rose-600 transition p-1 cursor-pointer"
+                            title="Remove Sub-Section"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                      </div>
+                      <h4 className="mt-2 text-sm font-bold text-slate-900">{sub.name}</h4>
+                      {sub.description && (
+                        <p className="text-xs text-slate-500 mt-1 leading-relaxed">{sub.description}</p>
+                      )}
+                    </div>
+                    <div className="mt-3 pt-2 border-t border-slate-200/60 flex items-center justify-between text-[11px] text-slate-500">
+                      <span>{sub.responsible_person ? `In-Charge: ${sub.responsible_person}` : 'Cell Lead: Assigned'}</span>
+                      {sub.target_sam ? (
+                        <span className="font-mono font-bold text-amber-600">{sub.target_sam}s SAM</span>
+                      ) : null}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-xl border border-dashed border-slate-200 p-6 text-center">
+                <p className="text-xs text-slate-500">No sub-sections configured for this section yet.</p>
+                <button
+                  onClick={handleOpenAddSub}
+                  className="mt-2 text-xs font-bold text-blue-600 hover:underline cursor-pointer"
+                >
+                  + Create first sub-section
+                </button>
+              </div>
+            )}
+          </div>
+
           {/* Quick Machine Table */}
           <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs">
             <div className="flex items-center justify-between mb-4">
@@ -782,6 +1009,235 @@ export default function SectionDetailPage() {
           </div>
         </div>
       )}
+
+      {/* Admin Login Dialog Modal */}
+      <AdminLoginModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        onSuccess={handleAuthSuccess}
+      />
+
+      {/* Edit Section Modal */}
+      <Modal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        title={`Edit Section: ${section.name}`}
+        subtitle="Configure section name, code, in-charge, and line target parameters"
+        maxWidth="2xl"
+      >
+        <form onSubmit={handleSaveEdit} className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">Section Code *</label>
+              <input
+                type="text"
+                required
+                value={editForm.code}
+                onChange={(e) => setEditForm({ ...editForm, code: e.target.value })}
+                className="w-full rounded-lg border border-slate-200 p-2 text-xs font-mono"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">Section Name *</label>
+              <input
+                type="text"
+                required
+                value={editForm.name}
+                onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                className="w-full rounded-lg border border-slate-200 p-2 text-xs font-semibold"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">Department</label>
+              <input
+                type="text"
+                value={editForm.department}
+                onChange={(e) => setEditForm({ ...editForm, department: e.target.value })}
+                className="w-full rounded-lg border border-slate-200 p-2 text-xs"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">Line In-Charge</label>
+              <input
+                type="text"
+                value={editForm.responsible_person}
+                onChange={(e) => setEditForm({ ...editForm, responsible_person: e.target.value })}
+                className="w-full rounded-lg border border-slate-200 p-2 text-xs"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">Status</label>
+              <select
+                value={editForm.status}
+                onChange={(e) => setEditForm({ ...editForm, status: e.target.value as any })}
+                className="w-full rounded-lg border border-slate-200 p-2 text-xs"
+              >
+                <option value="Active">Active</option>
+                <option value="Maintenance">Maintenance</option>
+                <option value="Inactive">Inactive</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-3 rounded-xl border border-slate-100 bg-slate-50/70 p-3">
+            <div>
+              <label className="text-[11px] font-bold text-slate-600 block mb-1">Target OEE (%)</label>
+              <input
+                type="number"
+                min={10}
+                max={100}
+                value={editForm.target_oee}
+                onChange={(e) => setEditForm({ ...editForm, target_oee: Number(e.target.value) })}
+                className="w-full rounded-lg border border-slate-200 bg-white p-1.5 text-xs font-mono"
+              />
+            </div>
+            <div>
+              <label className="text-[11px] font-bold text-slate-600 block mb-1">Line Speed</label>
+              <input
+                type="text"
+                value={editForm.line_speed}
+                onChange={(e) => setEditForm({ ...editForm, line_speed: e.target.value })}
+                className="w-full rounded-lg border border-slate-200 bg-white p-1.5 text-xs"
+              />
+            </div>
+            <div>
+              <label className="text-[11px] font-bold text-slate-600 block mb-1">Takt Time (sec)</label>
+              <input
+                type="number"
+                min={1}
+                value={editForm.target_takt_time_sec}
+                onChange={(e) => setEditForm({ ...editForm, target_takt_time_sec: Number(e.target.value) })}
+                className="w-full rounded-lg border border-slate-200 bg-white p-1.5 text-xs font-mono"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-bold text-slate-700 block mb-1">Description</label>
+            <textarea
+              rows={2}
+              value={editForm.description}
+              onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+              className="w-full rounded-lg border border-slate-200 p-2 text-xs"
+            />
+          </div>
+
+          <div>
+            <label className="text-xs font-bold text-slate-700 block mb-1">Photo URL</label>
+            <input
+              type="text"
+              value={editForm.photo_url}
+              onChange={(e) => setEditForm({ ...editForm, photo_url: e.target.value })}
+              className="w-full rounded-lg border border-slate-200 p-2 text-xs font-mono"
+            />
+          </div>
+
+          <div className="flex justify-end space-x-2 pt-2 border-t border-slate-100">
+            <button
+              type="button"
+              onClick={() => setIsEditModalOpen(false)}
+              className="rounded-lg border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="rounded-lg bg-blue-600 px-5 py-2 text-xs font-bold text-white hover:bg-blue-500 shadow-md shadow-blue-500/20 transition"
+            >
+              Save Changes
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Add Sub-Section Modal */}
+      <Modal
+        isOpen={isAddSubModalOpen}
+        onClose={() => setIsAddSubModalOpen(false)}
+        title={`Add Sub-Section to ${section.name}`}
+        subtitle="Register a new functional cell, sub-assembly station, or work area"
+        maxWidth="md"
+      >
+        <form onSubmit={handleSaveSubSection} className="space-y-4">
+          <div>
+            <label className="text-xs font-bold text-slate-700 block mb-1">Sub-Section Name *</label>
+            <input
+              type="text"
+              required
+              placeholder="e.g. Evaporator Core Sub-Assembly"
+              value={newSubForm.name}
+              onChange={(e) => setNewSubForm({ ...newSubForm, name: e.target.value })}
+              className="w-full rounded-lg border border-slate-200 p-2 text-xs font-semibold"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">Sub-Section Code *</label>
+              <input
+                type="text"
+                required
+                placeholder="e.g. SUB-EVAP"
+                value={newSubForm.code}
+                onChange={(e) => setNewSubForm({ ...newSubForm, code: e.target.value })}
+                className="w-full rounded-lg border border-slate-200 p-2 text-xs font-mono"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">Target SAM (seconds)</label>
+              <input
+                type="number"
+                min={0}
+                placeholder="e.g. 45"
+                value={newSubForm.target_sam}
+                onChange={(e) => setNewSubForm({ ...newSubForm, target_sam: e.target.value })}
+                className="w-full rounded-lg border border-slate-200 p-2 text-xs font-mono"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-bold text-slate-700 block mb-1">Cell In-Charge (Optional)</label>
+            <input
+              type="text"
+              placeholder="e.g. Engr. Tanvir"
+              value={newSubForm.responsible_person}
+              onChange={(e) => setNewSubForm({ ...newSubForm, responsible_person: e.target.value })}
+              className="w-full rounded-lg border border-slate-200 p-2 text-xs"
+            />
+          </div>
+
+          <div>
+            <label className="text-xs font-bold text-slate-700 block mb-1">Description & Scope</label>
+            <textarea
+              rows={3}
+              placeholder="Details of work performed in this cell..."
+              value={newSubForm.description}
+              onChange={(e) => setNewSubForm({ ...newSubForm, description: e.target.value })}
+              className="w-full rounded-lg border border-slate-200 p-2 text-xs"
+            />
+          </div>
+
+          <div className="flex justify-end space-x-2 pt-2 border-t border-slate-100">
+            <button
+              type="button"
+              onClick={() => setIsAddSubModalOpen(false)}
+              className="rounded-lg border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="rounded-lg bg-indigo-600 px-5 py-2 text-xs font-bold text-white hover:bg-indigo-500 shadow-md shadow-indigo-500/20 transition"
+            >
+              Create Sub-Section
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

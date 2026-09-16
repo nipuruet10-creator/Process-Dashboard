@@ -10,6 +10,15 @@ export interface UserProfile {
 
 export type SectionStatus = 'Active' | 'Inactive' | 'Maintenance';
 
+export interface SubSection {
+  id: string;
+  name: string;
+  code?: string;
+  description?: string;
+  responsible_person?: string;
+  target_sam?: number;
+}
+
 export interface Section {
   id: string;
   code: string; // e.g. SEC-INDOOR, SEC-OUTDOOR-1, SEC-VAC
@@ -20,6 +29,10 @@ export interface Section {
   photo_url?: string;
   status: SectionStatus;
   sort_order: number;
+  sub_sections?: SubSection[];
+  target_oee?: number;
+  line_speed?: string;
+  target_takt_time_sec?: number;
   created_at: string;
   updated_at: string;
 }

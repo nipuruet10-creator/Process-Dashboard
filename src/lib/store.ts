@@ -2,6 +2,7 @@
 
 import {
   Section,
+  SubSection,
   Machine,
   Process,
   CustomField,
@@ -83,6 +84,7 @@ class Store {
   public machineImages: MachineImage[] = [];
   public documents: DocumentItem[] = [];
   public auditLogs: AuditLog[] = [];
+  public isAdminAuthenticated = false;
   public isInitialized = false;
 
   constructor() {
@@ -124,6 +126,9 @@ class Store {
     const savedUser = loadFromStorage<UserProfile>('current_user', SEED_USERS[0]);
     this.currentUser = savedUser;
 
+    const savedAuth = loadFromStorage<boolean>('admin_auth_status', false);
+    this.isAdminAuthenticated = savedAuth;
+
     this.isInitialized = true;
     this.notify();
   }
@@ -156,11 +161,62 @@ class Store {
     this.notify();
   }
 
+  public login(id: string, pass: string): { success: boolean; message?: string } {
+    const normalizedId = (id || '').trim().toLowerCase();
+    if ((normalizedId === 'admin' || normalizedId === 'admin@waltonbd.com') && pass === 'ACprocess@2026') {
+      this.isAdminAuthenticated = true;
+      this.currentUser = this.users[0]; // Admin profile
+      saveToStorage('admin_auth_status', true);
+      saveToStorage('current_user', this.currentUser);
+      this.logAudit('LOGIN_SUCCESS', 'auth', undefined, { username: id });
+      this.notify();
+      return { success: true };
+    } else {
+      this.logAudit('LOGIN_FAILED', 'auth', undefined, { username: id });
+      return { success: false, message: 'Invalid Admin ID or Password. (ID: admin, Pass: ACprocess@2026)' };
+    }
+  }
+
+  public logout() {
+    this.isAdminAuthenticated = false;
+    this.currentUser = this.users.find((u) => u.role === 'viewer') || this.users[3];
+    saveToStorage('admin_auth_status', false);
+    saveToStorage('current_user', this.currentUser);
+    this.logAudit('LOGOUT', 'auth');
+    this.notify();
+  }
+
   public setCurrentUser(user: UserProfile) {
     this.currentUser = user;
     saveToStorage('current_user', user);
     this.logAudit('SWITCH_ROLE', 'user', user.id, { newRole: user.role, userName: user.full_name });
     this.notify();
+  }
+
+  // --- SUB-SECTIONS ---
+  public addSubSection(sectionId: string, subSec: Omit<SubSection, 'id'>): SubSection | null {
+    const section = this.sections.find((s) => s.id === sectionId);
+    if (!section) return null;
+    const newSub: SubSection = {
+      ...subSec,
+      id: 'sub-' + Date.now(),
+    };
+    const currentSubs = section.sub_sections || [];
+    this.updateSection(sectionId, {
+      sub_sections: [...currentSubs, newSub],
+    });
+    this.logAudit('CREATE', 'sub_section', newSub.id, { section_id: sectionId, name: newSub.name });
+    return newSub;
+  }
+
+  public deleteSubSection(sectionId: string, subSectionId: string) {
+    const section = this.sections.find((s) => s.id === sectionId);
+    if (!section) return;
+    const currentSubs = section.sub_sections || [];
+    this.updateSection(sectionId, {
+      sub_sections: currentSubs.filter((s) => s.id !== subSectionId),
+    });
+    this.logAudit('DELETE', 'sub_section', subSectionId, { section_id: sectionId });
   }
 
   // --- SECTIONS ---

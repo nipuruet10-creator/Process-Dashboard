@@ -14,6 +14,10 @@ import {
   FileSpreadsheet,
   FileText,
   Shield,
+  ShieldCheck,
+  Lock,
+  LogOut,
+  Layers,
   History,
   Sliders,
   Table as TableIcon,
@@ -29,6 +33,8 @@ import { Modal } from '../../components/ui/Modal';
 import { parseExcelUpload } from '../../lib/excel';
 import {
   Section,
+  SectionStatus,
+  SubSection,
   Machine,
   Process,
   CustomField,
@@ -56,9 +62,19 @@ function AdminDashboardContent() {
   const initialTab = (searchParams.get('tab') as AdminTab) || 'overview';
   const [activeTab, setActiveTab] = useState<AdminTab>(initialTab);
 
+  // Authentication states
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(store.isAdminAuthenticated);
+  const [loginId, setLoginId] = useState('admin');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [loginError, setLoginError] = useState('');
+
   useEffect(() => {
     store.init();
-    const unsub = store.subscribe(() => setTick((t) => t + 1));
+    setIsAdminAuthenticated(store.isAdminAuthenticated);
+    const unsub = store.subscribe(() => {
+      setTick((t) => t + 1);
+      setIsAdminAuthenticated(store.isAdminAuthenticated);
+    });
     return unsub;
   }, []);
 
@@ -67,12 +83,13 @@ function AdminDashboardContent() {
 
   // Modal states
   const [isSectionModalOpen, setIsSectionModalOpen] = useState(false);
+  const [isEditSectionModalOpen, setIsEditSectionModalOpen] = useState(false);
   const [isMachineModalOpen, setIsMachineModalOpen] = useState(false);
   const [isProcessModalOpen, setIsProcessModalOpen] = useState(false);
   const [isFieldModalOpen, setIsFieldModalOpen] = useState(false);
   const [isTableModalOpen, setIsTableModalOpen] = useState(false);
 
-  // Section Form state
+  // Section Form state (Create)
   const [secForm, setSecForm] = useState({
     code: '',
     name: '',
@@ -80,9 +97,35 @@ function AdminDashboardContent() {
     description: '',
     responsible_person: '',
     photo_url: '',
-    status: 'Active' as const,
+    status: 'Active' as SectionStatus,
     sort_order: 1,
+    target_oee: 85,
+    line_speed: '45 units/hr',
+    target_takt_time_sec: 50,
   });
+
+  // Section Edit Form state
+  const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
+  const [editSecForm, setEditSecForm] = useState({
+    code: '',
+    name: '',
+    department: 'Process Development & IE',
+    description: '',
+    responsible_person: '',
+    photo_url: '',
+    status: 'Active' as SectionStatus,
+    target_oee: 85,
+    line_speed: '45 units/hr',
+    target_takt_time_sec: 50,
+    sub_sections: [] as SubSection[],
+  });
+
+  // Sub-section adder inside Section Edit Modal
+  const [newSubName, setNewSubName] = useState('');
+  const [newSubCode, setNewSubCode] = useState('');
+  const [newSubResponsible, setNewSubResponsible] = useState('');
+  const [newSubTargetSAM, setNewSubTargetSAM] = useState<string>('');
+  const [newSubDesc, setNewSubDesc] = useState('');
 
   // Machine Form state
   const [machForm, setMachForm] = useState({
@@ -150,13 +193,109 @@ function AdminDashboardContent() {
   const [columnMappings, setColumnMappings] = useState<Record<string, string>>({});
   const [importSuccessMessage, setImportSuccessMessage] = useState<string>('');
 
+  // Handlers for Authentication
+  const handleAdminLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginError('');
+    const res = store.login(loginId, loginPassword);
+    if (res.success) {
+      setIsAdminAuthenticated(true);
+      setLoginPassword('');
+    } else {
+      setLoginError(res.message || 'Invalid credentials');
+    }
+  };
+
+  // Handlers for Section Edit
+  const handleOpenEditSection = (s: Section) => {
+    setEditingSectionId(s.id);
+    setEditSecForm({
+      code: s.code,
+      name: s.name,
+      department: s.department,
+      description: s.description || '',
+      responsible_person: s.responsible_person || '',
+      photo_url: s.photo_url || '',
+      status: s.status,
+      target_oee: s.target_oee ?? 85,
+      line_speed: s.line_speed || '45 units/hr',
+      target_takt_time_sec: s.target_takt_time_sec ?? 50,
+      sub_sections: s.sub_sections ? [...s.sub_sections] : [],
+    });
+    setNewSubName('');
+    setNewSubCode('');
+    setNewSubResponsible('');
+    setNewSubTargetSAM('');
+    setNewSubDesc('');
+    setIsEditSectionModalOpen(true);
+  };
+
+  const handleAddSubSectionToEdit = () => {
+    if (!newSubName.trim()) {
+      alert('Please enter a sub-section name.');
+      return;
+    }
+    const newSub: SubSection = {
+      id: 'sub-' + Date.now(),
+      name: newSubName.trim(),
+      code: newSubCode.trim() || `SUB-${editSecForm.sub_sections.length + 1}`,
+      responsible_person: newSubResponsible.trim() || undefined,
+      target_sam: newSubTargetSAM ? Number(newSubTargetSAM) : undefined,
+      description: newSubDesc.trim() || undefined,
+    };
+    setEditSecForm({
+      ...editSecForm,
+      sub_sections: [...editSecForm.sub_sections, newSub],
+    });
+    setNewSubName('');
+    setNewSubCode('');
+    setNewSubResponsible('');
+    setNewSubTargetSAM('');
+    setNewSubDesc('');
+  };
+
+  const handleDeleteSubSectionFromEdit = (subId: string) => {
+    setEditSecForm({
+      ...editSecForm,
+      sub_sections: editSecForm.sub_sections.filter((sub) => sub.id !== subId),
+    });
+  };
+
+  const handleSaveEditSection = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isReadOnly) return alert('Viewer role has read-only access.');
+    if (!editingSectionId) return;
+    if (!editSecForm.name || !editSecForm.code) return alert('Please enter section name and code.');
+
+    store.updateSection(editingSectionId, {
+      code: editSecForm.code,
+      name: editSecForm.name,
+      department: editSecForm.department,
+      description: editSecForm.description,
+      responsible_person: editSecForm.responsible_person,
+      photo_url: editSecForm.photo_url,
+      status: editSecForm.status,
+      target_oee: Number(editSecForm.target_oee) || undefined,
+      line_speed: editSecForm.line_speed || undefined,
+      target_takt_time_sec: Number(editSecForm.target_takt_time_sec) || undefined,
+      sub_sections: editSecForm.sub_sections,
+    });
+    setIsEditSectionModalOpen(false);
+    setEditingSectionId(null);
+  };
+
   // Handlers for Save
   const handleSaveSection = (e: React.FormEvent) => {
     e.preventDefault();
     if (isReadOnly) return alert('Viewer role has read-only access.');
     if (!secForm.name || !secForm.code) return alert('Please enter section name and code.');
 
-    store.addSection(secForm);
+    store.addSection({
+      ...secForm,
+      target_oee: Number(secForm.target_oee) || 85,
+      target_takt_time_sec: Number(secForm.target_takt_time_sec) || 50,
+      sub_sections: [],
+    });
     setIsSectionModalOpen(false);
     setSecForm({
       code: '',
@@ -167,6 +306,9 @@ function AdminDashboardContent() {
       photo_url: '',
       status: 'Active',
       sort_order: 1,
+      target_oee: 85,
+      line_speed: '45 units/hr',
+      target_takt_time_sec: 50,
     });
   };
 
@@ -327,6 +469,79 @@ function AdminDashboardContent() {
     setTimeout(() => setImportSuccessMessage(''), 5000);
   };
 
+  if (!isAdminAuthenticated) {
+    return (
+      <div className="py-16 max-w-md mx-auto px-4">
+        <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-xl">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white mx-auto shadow-lg shadow-blue-500/20 mb-5">
+            <Shield className="h-7 w-7" />
+          </div>
+          <div className="text-center">
+            <span className="rounded-full bg-blue-50 px-3 py-1 text-[11px] font-bold text-blue-700 border border-blue-200 uppercase tracking-wider">
+              Protected Administrative Area
+            </span>
+            <h2 className="mt-3 text-2xl font-black text-slate-900 tracking-tight">
+              Admin Access Required
+            </h2>
+            <p className="mt-1 text-xs text-slate-500">
+              Walton AC Process Development & Industrial Engineering
+            </p>
+          </div>
+
+          <form onSubmit={handleAdminLogin} className="mt-6 space-y-4">
+            {loginError && (
+              <div className="flex items-center space-x-2 rounded-xl bg-rose-50 border border-rose-200 p-3 text-xs text-rose-800 animate-in fade-in">
+                <AlertCircle className="h-4 w-4 shrink-0 text-rose-600" />
+                <span>{loginError}</span>
+              </div>
+            )}
+
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">Admin ID</label>
+              <input
+                type="text"
+                required
+                value={loginId}
+                onChange={(e) => setLoginId(e.target.value)}
+                placeholder="admin"
+                className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-xs font-semibold focus:border-blue-500 focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">Password</label>
+              <input
+                type="password"
+                required
+                value={loginPassword}
+                onChange={(e) => setLoginPassword(e.target.value)}
+                placeholder="••••••••••••"
+                className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-xs font-semibold focus:border-blue-500 focus:outline-none"
+              />
+            </div>
+
+            <div className="rounded-xl bg-slate-50 border border-slate-200 p-3 text-[11px] text-slate-600 space-y-1">
+              <div className="font-bold text-slate-800 flex items-center">
+                <Lock className="h-3.5 w-3.5 mr-1 text-blue-600" /> Default Credentials:
+              </div>
+              <div className="flex items-center justify-between text-slate-700 pt-0.5">
+                <span>ID: <strong className="font-mono text-blue-600">admin</strong></span>
+                <span>Pass: <strong className="font-mono text-blue-600">ACprocess@2026</strong></span>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              className="w-full rounded-xl bg-blue-600 py-3 text-xs font-bold text-white hover:bg-blue-500 shadow-lg shadow-blue-500/25 transition cursor-pointer"
+            >
+              Authorize & Access Admin Panel
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12">
       {/* Header */}
@@ -344,12 +559,19 @@ function AdminDashboardContent() {
           </p>
         </div>
 
-        {isReadOnly && (
-          <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800 flex items-center">
-            <AlertCircle className="h-4 w-4 mr-1.5 text-amber-600" />
-            <span>Current role is Viewer (Read Only). Switch to Admin in top header to edit.</span>
+        <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-2 rounded-xl bg-rose-50 border border-rose-200 px-3 py-1.5 text-xs text-rose-700 font-bold shadow-2xs">
+            <ShieldCheck className="h-4 w-4 text-rose-600" />
+            <span className="hidden sm:inline">Admin Mode Active</span>
           </div>
-        )}
+          <button
+            onClick={() => store.logout()}
+            className="flex items-center space-x-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 shadow-2xs transition"
+          >
+            <LogOut className="h-3.5 w-3.5 text-slate-500" />
+            <span>Logout</span>
+          </button>
+        </div>
       </div>
 
       {/* Admin Nav Tabs */}
@@ -500,7 +722,9 @@ function AdminDashboardContent() {
                 <tr className="border-b border-slate-200 bg-slate-50 text-slate-600 font-bold uppercase text-[11px]">
                   <th className="py-3 px-4">Code</th>
                   <th className="py-3 px-4">Name</th>
+                  <th className="py-3 px-4">Sub-Sections</th>
                   <th className="py-3 px-4">Department</th>
+                  <th className="py-3 px-4">Target OEE / Speed</th>
                   <th className="py-3 px-4">In-Charge</th>
                   <th className="py-3 px-4">Status</th>
                   <th className="py-3 px-4 text-right">Actions</th>
@@ -511,22 +735,39 @@ function AdminDashboardContent() {
                   <tr key={s.id} className="hover:bg-slate-50">
                     <td className="py-3 px-4 font-mono font-bold text-blue-600">{s.code}</td>
                     <td className="py-3 px-4 font-bold text-slate-900">{s.name}</td>
+                    <td className="py-3 px-4">
+                      <span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700 border border-blue-200">
+                        {s.sub_sections?.length || 0} Sub-sections
+                      </span>
+                    </td>
                     <td className="py-3 px-4 text-slate-500">{s.department}</td>
+                    <td className="py-3 px-4 font-mono text-[11px]">
+                      <span className="font-bold text-slate-800">{s.target_oee || 85}% OEE</span>
+                      <span className="text-slate-400 mx-1">/</span>
+                      <span className="text-slate-600">{s.line_speed || '45 units/hr'}</span>
+                    </td>
                     <td className="py-3 px-4">{s.responsible_person || '-'}</td>
                     <td className="py-3 px-4">
                       <Badge variant={s.status === 'Active' ? 'success' : 'warning'} size="sm">
                         {s.status}
                       </Badge>
                     </td>
-                    <td className="py-3 px-4 text-right space-x-2">
+                    <td className="py-3 px-4 text-right space-x-1 whitespace-nowrap">
+                      <button
+                        onClick={() => handleOpenEditSection(s)}
+                        className="text-slate-400 hover:text-blue-600 transition p-1 hover:bg-blue-50 rounded"
+                        title="Edit Section & Sub-Sections"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </button>
                       <button
                         onClick={() => {
                           if (confirm(`Delete section "${s.name}"?`)) {
                             store.deleteSection(s.id);
                           }
                         }}
-                        className="text-slate-400 hover:text-rose-600 transition"
-                        title="Delete"
+                        className="text-slate-400 hover:text-rose-600 transition p-1 hover:bg-rose-50 rounded"
+                        title="Delete Section"
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
@@ -1043,57 +1284,99 @@ function AdminDashboardContent() {
         subtitle="Add a new production line, assembly station, or test area"
       >
         <form onSubmit={handleSaveSection} className="space-y-4">
-          <div>
-            <label className="text-xs font-bold text-slate-700 block mb-1">Section Code *</label>
-            <input
-              type="text"
-              required
-              placeholder="e.g. SEC-CHILLER, SEC-VRF"
-              value={secForm.code}
-              onChange={(e) => setSecForm({ ...secForm, code: e.target.value })}
-              className="w-full rounded-lg border border-slate-200 p-2 text-xs font-mono"
-            />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">Section Code *</label>
+              <input
+                type="text"
+                required
+                placeholder="e.g. SEC-CHILLER, SEC-VRF"
+                value={secForm.code}
+                onChange={(e) => setSecForm({ ...secForm, code: e.target.value })}
+                className="w-full rounded-lg border border-slate-200 p-2 text-xs font-mono"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">Section Name *</label>
+              <input
+                type="text"
+                required
+                placeholder="e.g. Chiller Assembly Line"
+                value={secForm.name}
+                onChange={(e) => setSecForm({ ...secForm, name: e.target.value })}
+                className="w-full rounded-lg border border-slate-200 p-2 text-xs"
+              />
+            </div>
           </div>
-          <div>
-            <label className="text-xs font-bold text-slate-700 block mb-1">Section Name *</label>
-            <input
-              type="text"
-              required
-              placeholder="e.g. Chiller Assembly Line"
-              value={secForm.name}
-              onChange={(e) => setSecForm({ ...secForm, name: e.target.value })}
-              className="w-full rounded-lg border border-slate-200 p-2 text-xs"
-            />
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">Department</label>
+              <input
+                type="text"
+                value={secForm.department}
+                onChange={(e) => setSecForm({ ...secForm, department: e.target.value })}
+                className="w-full rounded-lg border border-slate-200 p-2 text-xs"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">Responsible Person (In-Charge)</label>
+              <input
+                type="text"
+                placeholder="e.g. Engr. Tanvir Rahman"
+                value={secForm.responsible_person}
+                onChange={(e) => setSecForm({ ...secForm, responsible_person: e.target.value })}
+                className="w-full rounded-lg border border-slate-200 p-2 text-xs"
+              />
+            </div>
           </div>
-          <div>
-            <label className="text-xs font-bold text-slate-700 block mb-1">Department</label>
-            <input
-              type="text"
-              value={secForm.department}
-              onChange={(e) => setSecForm({ ...secForm, department: e.target.value })}
-              className="w-full rounded-lg border border-slate-200 p-2 text-xs"
-            />
+
+          {/* Line Customization Parameters */}
+          <div className="grid grid-cols-3 gap-3 rounded-xl border border-slate-100 bg-slate-50/70 p-3">
+            <div>
+              <label className="text-[11px] font-bold text-slate-600 block mb-1">Target OEE (%)</label>
+              <input
+                type="number"
+                min={10}
+                max={100}
+                value={secForm.target_oee}
+                onChange={(e) => setSecForm({ ...secForm, target_oee: Number(e.target.value) })}
+                className="w-full rounded-lg border border-slate-200 bg-white p-1.5 text-xs font-mono"
+              />
+            </div>
+            <div>
+              <label className="text-[11px] font-bold text-slate-600 block mb-1">Line Speed</label>
+              <input
+                type="text"
+                placeholder="45 units/hr"
+                value={secForm.line_speed}
+                onChange={(e) => setSecForm({ ...secForm, line_speed: e.target.value })}
+                className="w-full rounded-lg border border-slate-200 bg-white p-1.5 text-xs"
+              />
+            </div>
+            <div>
+              <label className="text-[11px] font-bold text-slate-600 block mb-1">Takt Time (sec)</label>
+              <input
+                type="number"
+                min={1}
+                value={secForm.target_takt_time_sec}
+                onChange={(e) => setSecForm({ ...secForm, target_takt_time_sec: Number(e.target.value) })}
+                className="w-full rounded-lg border border-slate-200 bg-white p-1.5 text-xs font-mono"
+              />
+            </div>
           </div>
-          <div>
-            <label className="text-xs font-bold text-slate-700 block mb-1">Responsible Person (In-Charge)</label>
-            <input
-              type="text"
-              placeholder="e.g. Engr. Tanvir Rahman"
-              value={secForm.responsible_person}
-              onChange={(e) => setSecForm({ ...secForm, responsible_person: e.target.value })}
-              className="w-full rounded-lg border border-slate-200 p-2 text-xs"
-            />
-          </div>
+
           <div>
             <label className="text-xs font-bold text-slate-700 block mb-1">Description</label>
             <textarea
-              rows={3}
+              rows={2}
               placeholder="Process details and operational scope..."
               value={secForm.description}
               onChange={(e) => setSecForm({ ...secForm, description: e.target.value })}
               className="w-full rounded-lg border border-slate-200 p-2 text-xs"
             />
           </div>
+
           <div className="flex justify-end space-x-2 pt-2">
             <button
               type="button"
@@ -1107,6 +1390,258 @@ function AdminDashboardContent() {
               className="rounded-lg bg-blue-600 px-4 py-2 text-xs font-bold text-white hover:bg-blue-500"
             >
               Save Section
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* MODAL: EDIT SECTION & SUB-SECTIONS */}
+      <Modal
+        isOpen={isEditSectionModalOpen}
+        onClose={() => {
+          setIsEditSectionModalOpen(false);
+          setEditingSectionId(null);
+        }}
+        title={`Edit Section: ${editSecForm.name || 'Section Parameters'}`}
+        subtitle="Modify line configuration, engineering parameters, and manage sub-sections"
+        maxWidth="3xl"
+      >
+        <form onSubmit={handleSaveEditSection} className="space-y-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">Section Code *</label>
+              <input
+                type="text"
+                required
+                value={editSecForm.code}
+                onChange={(e) => setEditSecForm({ ...editSecForm, code: e.target.value })}
+                className="w-full rounded-lg border border-slate-200 p-2 text-xs font-mono"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">Section Name *</label>
+              <input
+                type="text"
+                required
+                value={editSecForm.name}
+                onChange={(e) => setEditSecForm({ ...editSecForm, name: e.target.value })}
+                className="w-full rounded-lg border border-slate-200 p-2 text-xs font-semibold"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">Department</label>
+              <input
+                type="text"
+                value={editSecForm.department}
+                onChange={(e) => setEditSecForm({ ...editSecForm, department: e.target.value })}
+                className="w-full rounded-lg border border-slate-200 p-2 text-xs"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">Responsible Person (In-Charge)</label>
+              <input
+                type="text"
+                value={editSecForm.responsible_person}
+                onChange={(e) => setEditSecForm({ ...editSecForm, responsible_person: e.target.value })}
+                className="w-full rounded-lg border border-slate-200 p-2 text-xs"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">Operational Status</label>
+              <select
+                value={editSecForm.status}
+                onChange={(e) => setEditSecForm({ ...editSecForm, status: e.target.value as any })}
+                className="w-full rounded-lg border border-slate-200 p-2 text-xs"
+              >
+                <option value="Active">Active</option>
+                <option value="Maintenance">Maintenance</option>
+                <option value="Inactive">Inactive</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Line Customization Parameters */}
+          <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 space-y-3">
+            <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center">
+              <Sliders className="h-3.5 w-3.5 mr-1.5 text-blue-600" />
+              Line Target & Engineering Customizations
+            </h4>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="text-[11px] font-bold text-slate-600 block mb-1">Target OEE (%)</label>
+                <input
+                  type="number"
+                  min={10}
+                  max={100}
+                  value={editSecForm.target_oee}
+                  onChange={(e) => setEditSecForm({ ...editSecForm, target_oee: Number(e.target.value) })}
+                  className="w-full rounded-lg border border-slate-200 bg-white p-2 text-xs font-mono"
+                />
+              </div>
+              <div>
+                <label className="text-[11px] font-bold text-slate-600 block mb-1">Line Speed</label>
+                <input
+                  type="text"
+                  placeholder="e.g. 45 units/hr"
+                  value={editSecForm.line_speed}
+                  onChange={(e) => setEditSecForm({ ...editSecForm, line_speed: e.target.value })}
+                  className="w-full rounded-lg border border-slate-200 bg-white p-2 text-xs"
+                />
+              </div>
+              <div>
+                <label className="text-[11px] font-bold text-slate-600 block mb-1">Target Takt Time (sec)</label>
+                <input
+                  type="number"
+                  min={1}
+                  value={editSecForm.target_takt_time_sec}
+                  onChange={(e) => setEditSecForm({ ...editSecForm, target_takt_time_sec: Number(e.target.value) })}
+                  className="w-full rounded-lg border border-slate-200 bg-white p-2 text-xs font-mono"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-bold text-slate-700 block mb-1">Description</label>
+            <textarea
+              rows={2}
+              value={editSecForm.description}
+              onChange={(e) => setEditSecForm({ ...editSecForm, description: e.target.value })}
+              className="w-full rounded-lg border border-slate-200 p-2 text-xs"
+            />
+          </div>
+
+          <div>
+            <label className="text-xs font-bold text-slate-700 block mb-1">Photo URL</label>
+            <input
+              type="text"
+              placeholder="https://images.unsplash.com/..."
+              value={editSecForm.photo_url}
+              onChange={(e) => setEditSecForm({ ...editSecForm, photo_url: e.target.value })}
+              className="w-full rounded-lg border border-slate-200 p-2 text-xs font-mono"
+            />
+          </div>
+
+          {/* Sub-Sections Management */}
+          <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center">
+                  <Layers className="h-3.5 w-3.5 mr-1.5 text-indigo-600" />
+                  Sub-Sections & Work Cells ({editSecForm.sub_sections.length})
+                </h4>
+                <p className="text-[11px] text-slate-500">
+                  Sub-divisions within this section (e.g. Sub-assembly, Quality Cell, Buffer)
+                </p>
+              </div>
+            </div>
+
+            {/* Existing Sub-Sections List */}
+            <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+              {editSecForm.sub_sections.map((sub) => (
+                <div
+                  key={sub.id}
+                  className="flex items-center justify-between p-2.5 rounded-lg border border-slate-200 bg-slate-50 text-xs"
+                >
+                  <div className="space-y-0.5">
+                    <div className="flex items-center space-x-2">
+                      <span className="font-bold text-slate-900">{sub.name}</span>
+                      <span className="font-mono text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.2 rounded font-bold">
+                        {sub.code}
+                      </span>
+                    </div>
+                    <div className="flex items-center space-x-3 text-[11px] text-slate-500">
+                      {sub.responsible_person && <span>In-Charge: {sub.responsible_person}</span>}
+                      {sub.target_sam && <span>Target SAM: {sub.target_sam}s</span>}
+                      {sub.description && <span className="truncate max-w-xs text-slate-400">{sub.description}</span>}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteSubSectionFromEdit(sub.id)}
+                    className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition"
+                    title="Remove Sub-Section"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ))}
+              {editSecForm.sub_sections.length === 0 && (
+                <p className="text-xs text-slate-400 italic py-2 text-center">No sub-sections added yet.</p>
+              )}
+            </div>
+
+            {/* Add New Sub-Section Inline Form */}
+            <div className="rounded-lg border border-dashed border-slate-300 p-3 bg-slate-50/50 space-y-2">
+              <p className="text-[11px] font-bold text-slate-700">+ Add New Sub-Section / Cell</p>
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
+                <input
+                  type="text"
+                  placeholder="Sub-section Name *"
+                  value={newSubName}
+                  onChange={(e) => setNewSubName(e.target.value)}
+                  className="rounded-lg border border-slate-200 bg-white p-2 text-xs"
+                />
+                <input
+                  type="text"
+                  placeholder="Code (e.g. SUB-01)"
+                  value={newSubCode}
+                  onChange={(e) => setNewSubCode(e.target.value)}
+                  className="rounded-lg border border-slate-200 bg-white p-2 text-xs font-mono"
+                />
+                <input
+                  type="text"
+                  placeholder="In-Charge (Optional)"
+                  value={newSubResponsible}
+                  onChange={(e) => setNewSubResponsible(e.target.value)}
+                  className="rounded-lg border border-slate-200 bg-white p-2 text-xs"
+                />
+                <input
+                  type="number"
+                  placeholder="Target SAM (s)"
+                  value={newSubTargetSAM}
+                  onChange={(e) => setNewSubTargetSAM(e.target.value)}
+                  className="rounded-lg border border-slate-200 bg-white p-2 text-xs font-mono"
+                />
+              </div>
+              <div className="flex items-center space-x-2">
+                <input
+                  type="text"
+                  placeholder="Operational scope / description (Optional)"
+                  value={newSubDesc}
+                  onChange={(e) => setNewSubDesc(e.target.value)}
+                  className="flex-1 rounded-lg border border-slate-200 bg-white p-2 text-xs"
+                />
+                <button
+                  type="button"
+                  onClick={handleAddSubSectionToEdit}
+                  className="rounded-lg bg-indigo-600 px-3 py-2 text-xs font-bold text-white hover:bg-indigo-500 transition shrink-0"
+                >
+                  + Add Cell
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-end space-x-2 pt-2 border-t border-slate-100">
+            <button
+              type="button"
+              onClick={() => {
+                setIsEditSectionModalOpen(false);
+                setEditingSectionId(null);
+              }}
+              className="rounded-lg border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="rounded-lg bg-blue-600 px-5 py-2 text-xs font-bold text-white hover:bg-blue-500 shadow-md shadow-blue-500/20 transition"
+            >
+              Save Section Changes
             </button>
           </div>
         </form>

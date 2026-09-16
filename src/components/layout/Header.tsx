@@ -4,6 +4,9 @@ import React, { useState, useEffect } from 'react';
 import {
   Search,
   ShieldCheck,
+  Shield,
+  Lock,
+  LogOut,
   User,
   Database,
   RotateCcw,
@@ -16,16 +19,20 @@ import {
 import { store } from '../../lib/store';
 import { UserRole } from '../../types';
 import { GlobalSearchModal } from '../search/GlobalSearchModal';
+import { AdminLoginModal } from '../auth/AdminLoginModal';
 
 export const Header: React.FC = () => {
   const [currentUser, setCurrentUser] = useState(store.currentUser);
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(store.isAdminAuthenticated);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isAdminLoginOpen, setIsAdminLoginOpen] = useState(false);
   const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<string>('Just now');
 
   useEffect(() => {
     const unsubscribe = store.subscribe(() => {
       setCurrentUser(store.currentUser);
+      setIsAdminAuthenticated(store.isAdminAuthenticated);
       setLastUpdated(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
     });
     return unsubscribe;
@@ -44,6 +51,11 @@ export const Header: React.FC = () => {
   }, []);
 
   const handleSwitchUser = (role: UserRole) => {
+    if (role === 'admin' && !store.isAdminAuthenticated) {
+      setIsRoleDropdownOpen(false);
+      setIsAdminLoginOpen(true);
+      return;
+    }
     const target = store.users.find((u) => u.role === role);
     if (target) {
       store.setCurrentUser(target);
@@ -118,6 +130,30 @@ export const Header: React.FC = () => {
           </div>
 
           {/* User Role Selector & Admin menu */}
+          {/* Admin Login / Active Status */}
+          {isAdminAuthenticated ? (
+            <div className="flex items-center space-x-2 rounded-xl bg-rose-50 border border-rose-200 px-3 py-1.5 text-xs text-rose-700 font-bold shadow-2xs">
+              <ShieldCheck className="h-4 w-4 text-rose-600" />
+              <span className="hidden sm:inline">Admin Mode</span>
+              <button
+                onClick={() => store.logout()}
+                className="ml-1 rounded-lg p-1 hover:bg-rose-100 text-rose-600 transition"
+                title="Logout Admin Session"
+              >
+                <LogOut className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setIsAdminLoginOpen(true)}
+              className="flex items-center space-x-1.5 rounded-xl bg-slate-900 px-3.5 py-2 text-xs font-bold text-white hover:bg-slate-800 transition shadow-xs cursor-pointer"
+            >
+              <Lock className="h-3.5 w-3.5 text-amber-400" />
+              <span>Admin Login</span>
+            </button>
+          )}
+
+          {/* User Role Selector & Admin menu */}
           <div className="relative">
             <button
               onClick={() => setIsRoleDropdownOpen(!isRoleDropdownOpen)}
@@ -162,7 +198,10 @@ export const Header: React.FC = () => {
                     currentUser.role === 'admin' ? 'bg-blue-50 text-blue-700 font-semibold' : 'hover:bg-slate-50 text-slate-700'
                   }`}
                 >
-                  <span>Admin (Full Access)</span>
+                  <span className="flex items-center">
+                    <Shield className="h-3.5 w-3.5 mr-1.5 text-rose-500" />
+                    Admin (Full Access)
+                  </span>
                   {currentUser.role === 'admin' && <CheckCircle2 className="h-3.5 w-3.5 text-blue-600" />}
                 </button>
 
@@ -196,6 +235,18 @@ export const Header: React.FC = () => {
                   {currentUser.role === 'viewer' && <CheckCircle2 className="h-3.5 w-3.5 text-blue-600" />}
                 </button>
 
+                {isAdminAuthenticated && (
+                  <div className="border-t border-slate-100 my-1 pt-1">
+                    <button
+                      onClick={() => store.logout()}
+                      className="w-full text-left px-3 py-1.5 rounded-lg text-rose-600 hover:bg-rose-50 flex items-center transition"
+                    >
+                      <LogOut className="h-3.5 w-3.5 mr-2" />
+                      <span>Logout Admin Session</span>
+                    </button>
+                  </div>
+                )}
+
                 <div className="border-t border-slate-100 my-1 pt-1">
                   <button
                     onClick={handleResetData}
@@ -213,6 +264,9 @@ export const Header: React.FC = () => {
 
       {/* Global Search Dialog Modal */}
       <GlobalSearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
+
+      {/* Admin Login Dialog Modal */}
+      <AdminLoginModal isOpen={isAdminLoginOpen} onClose={() => setIsAdminLoginOpen(false)} />
     </>
   );
 };
