@@ -41,7 +41,7 @@ export type MachineStatus = 'Active' | 'Inactive' | 'Under Maintenance' | 'Decom
 
 export interface Machine {
   id: string;
-  machine_id: string; // e.g. VAC-01, GAS-02, USW-01
+  machine_id: string; // e.g. TPM-01, FIN-01, TRU-01
   name: string;
   section_id: string;
   line: string; // e.g. Line 1, Main Line, Sub-assembly
@@ -55,8 +55,85 @@ export interface Machine {
   installation_date?: string;
   status: MachineStatus;
   description?: string;
+  capacity_per_hr?: string;
+  power_kw?: number;
+  responsible_person?: string;
+  spare_stock?: string;
+  spare_details?: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface ModelOperation {
+  id: string;
+  model_code: string;
+  section: string;
+  operation_name: string;
+  machine_manual: 'Machine' | 'Manual';
+  machine_tag?: string;
+  cycle_time_sec: number;
+  capacity_per_hr: number;
+  manpower: number;
+  kwh?: number;
+  air_m3_h?: number;
+  area_sft?: number;
+}
+
+export interface ModelProcessCost {
+  id: string;
+  model_code: string;
+  series: string;
+  capacity_ton: string;
+  source_file: string;
+  operation_count: number;
+  total_cycle_time_sec: number;
+  sam_sec: number;
+  total_manpower: number;
+  utility_cost_bdt: number;
+  manpower_cost_bdt: number;
+  area_cost_bdt: number;
+  mould_tooling_cost_bdt: number;
+  total_process_cost_bdt: number;
+  operations_sample?: ModelOperation[];
+}
+
+export interface HeatExchangerMatrix {
+  id: string;
+  capacity: string;
+  series: string;
+  version?: string;
+  part_name: string;
+  tube_dia: string;
+  tube_thickness?: string;
+  hairpin_count?: string;
+  hairpin_length?: string;
+  fin_thickness?: string;
+  hole_count?: string;
+  fin_configuration?: string;
+  fin_quantity?: string;
+}
+
+export interface ProductionForecast {
+  month: string;
+  condenser_mfc: number;
+  condenser_copper: number;
+  evaporator_5mm: number;
+  evaporator_7mm: number;
+  total_coils: number;
+}
+
+export interface FinPressCapacity {
+  id: string;
+  product: string;
+  machine: string;
+  type: string;
+  model: string;
+  cycle_time_sec: number;
+  capacity_per_hr: number;
+  shift_hours: number;
+  efficiency_pct: number;
+  gross_shift_cap: number;
+  effective_shift_cap: number;
 }
 
 export interface Process {

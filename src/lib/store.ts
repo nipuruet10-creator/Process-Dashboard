@@ -19,6 +19,10 @@ import {
   UserProfile,
   AuditLog,
   TargetEntity,
+  ModelProcessCost,
+  HeatExchangerMatrix,
+  ProductionForecast,
+  FinPressCapacity,
 } from '../types';
 
 import {
@@ -37,7 +41,13 @@ import {
   SEED_PART_COSTS,
   SEED_MACHINE_IMAGES,
   SEED_DOCUMENTS,
+  SEED_MODEL_PROCESS_COSTS,
+  SEED_HEAT_EXCHANGER_MATRIX,
+  SEED_PRODUCTION_FORECAST,
+  SEED_FIN_PRESS_CAPACITIES,
 } from '../data/seedData';
+import rawData from '../data/rawExtractedData.json';
+
 
 const STORE_KEY_PREFIX = 'walton_ie_v1_';
 
@@ -83,6 +93,10 @@ class Store {
   public partCosts: PartCost[] = [];
   public machineImages: MachineImage[] = [];
   public documents: DocumentItem[] = [];
+  public modelProcessCosts: ModelProcessCost[] = [];
+  public heatExchangerMatrix: HeatExchangerMatrix[] = [];
+  public productionForecast: ProductionForecast[] = [];
+  public finPressCapacities: FinPressCapacity[] = [];
   public auditLogs: AuditLog[] = [];
   public isAdminAuthenticated = false;
   public isInitialized = false;
@@ -110,6 +124,10 @@ class Store {
     this.partCosts = loadFromStorage('part_costs', SEED_PART_COSTS);
     this.machineImages = loadFromStorage('machine_images', SEED_MACHINE_IMAGES);
     this.documents = loadFromStorage('documents', SEED_DOCUMENTS);
+    this.modelProcessCosts = loadFromStorage('model_process_costs', SEED_MODEL_PROCESS_COSTS);
+    this.heatExchangerMatrix = loadFromStorage('heat_exchanger_matrix', SEED_HEAT_EXCHANGER_MATRIX);
+    this.productionForecast = loadFromStorage('production_forecast', SEED_PRODUCTION_FORECAST);
+    this.finPressCapacities = loadFromStorage('fin_press_capacities', SEED_FIN_PRESS_CAPACITIES);
     this.auditLogs = loadFromStorage('audit_logs', [
       {
         id: 'log-seed-1',
@@ -616,6 +634,156 @@ class Store {
     this.notify();
   }
 
+  // --- MODEL PROCESS COSTS ---
+  public addModelProcessCost(data: Omit<ModelProcessCost, 'id'>): ModelProcessCost {
+    const cost: ModelProcessCost = {
+      ...data,
+      id: 'model-cost-' + Date.now(),
+    };
+    this.modelProcessCosts = [cost, ...this.modelProcessCosts];
+    saveToStorage('model_process_costs', this.modelProcessCosts);
+    this.logAudit('CREATE', 'model_cost', cost.id, { model_code: cost.model_code, cost: cost.total_process_cost_bdt });
+    this.notify();
+    return cost;
+  }
+
+  public updateModelProcessCost(id: string, data: Partial<ModelProcessCost>): ModelProcessCost | null {
+    const idx = this.modelProcessCosts.findIndex((c) => c.id === id);
+    if (idx === -1) return null;
+    const updated = { ...this.modelProcessCosts[idx], ...data };
+    this.modelProcessCosts = [
+      ...this.modelProcessCosts.slice(0, idx),
+      updated,
+      ...this.modelProcessCosts.slice(idx + 1),
+    ];
+    saveToStorage('model_process_costs', this.modelProcessCosts);
+    this.logAudit('UPDATE', 'model_cost', id, { model_code: updated.model_code, cost: updated.total_process_cost_bdt });
+    this.notify();
+    return updated;
+  }
+
+  public deleteModelProcessCost(id: string) {
+    this.modelProcessCosts = this.modelProcessCosts.filter((c) => c.id !== id);
+    saveToStorage('model_process_costs', this.modelProcessCosts);
+    this.logAudit('DELETE', 'model_cost', id);
+    this.notify();
+  }
+
+  // --- HEAT EXCHANGER MATRIX ---
+  public addHeatExchangerMatrix(data: Omit<HeatExchangerMatrix, 'id'>): HeatExchangerMatrix {
+    const item: HeatExchangerMatrix = {
+      ...data,
+      id: 'mat-' + Date.now(),
+    };
+    this.heatExchangerMatrix = [item, ...this.heatExchangerMatrix];
+    saveToStorage('heat_exchanger_matrix', this.heatExchangerMatrix);
+    this.logAudit('CREATE', 'hex_matrix', item.id, { capacity: item.capacity, part_name: item.part_name });
+    this.notify();
+    return item;
+  }
+
+  public updateHeatExchangerMatrix(id: string, data: Partial<HeatExchangerMatrix>): HeatExchangerMatrix | null {
+    const idx = this.heatExchangerMatrix.findIndex((m) => m.id === id);
+    if (idx === -1) return null;
+    const updated = { ...this.heatExchangerMatrix[idx], ...data };
+    this.heatExchangerMatrix = [
+      ...this.heatExchangerMatrix.slice(0, idx),
+      updated,
+      ...this.heatExchangerMatrix.slice(idx + 1),
+    ];
+    saveToStorage('heat_exchanger_matrix', this.heatExchangerMatrix);
+    this.logAudit('UPDATE', 'hex_matrix', id, { capacity: updated.capacity });
+    this.notify();
+    return updated;
+  }
+
+  public deleteHeatExchangerMatrix(id: string) {
+    this.heatExchangerMatrix = this.heatExchangerMatrix.filter((m) => m.id !== id);
+    saveToStorage('heat_exchanger_matrix', this.heatExchangerMatrix);
+    this.logAudit('DELETE', 'hex_matrix', id);
+    this.notify();
+  }
+
+  // --- PRODUCTION FORECAST ---
+  public updateProductionForecast(month: string, data: Partial<ProductionForecast>): void {
+    const idx = this.productionForecast.findIndex((f) => f.month.toLowerCase() === month.toLowerCase());
+    if (idx !== -1) {
+      this.productionForecast[idx] = { ...this.productionForecast[idx], ...data };
+      saveToStorage('production_forecast', this.productionForecast);
+      this.notify();
+    }
+  }
+
+  // --- FIN PRESS CAPACITIES ---
+  public updateFinPressCapacity(id: string, data: Partial<FinPressCapacity>): void {
+    const idx = this.finPressCapacities.findIndex((f) => f.id === id);
+    if (idx !== -1) {
+      this.finPressCapacities[idx] = { ...this.finPressCapacities[idx], ...data };
+      saveToStorage('fin_press_capacities', this.finPressCapacities);
+      this.notify();
+    }
+  }
+
+  public addFinPressCapacity(data: Omit<FinPressCapacity, 'id'>): FinPressCapacity {
+    const cap: FinPressCapacity = {
+      ...data,
+      id: 'cap-' + Date.now(),
+    };
+    this.finPressCapacities = [cap, ...this.finPressCapacities];
+    saveToStorage('fin_press_capacities', this.finPressCapacities);
+    this.notify();
+    return cap;
+  }
+
+  public deleteFinPressCapacity(id: string): void {
+    this.finPressCapacities = this.finPressCapacities.filter((f) => f.id !== id);
+    saveToStorage('fin_press_capacities', this.finPressCapacities);
+    this.notify();
+  }
+
+  // --- RAW DATA SYNC ---
+  public syncFromRawExtractedData(): { success: boolean; stats: any } {
+    const rawTube: Machine[] = (rawData.tubeMachines as any[]).map((m) => ({
+      ...m,
+      created_at: '2026-01-01T00:00:00Z',
+      updated_at: new Date().toISOString(),
+    }));
+    const rawFin: Machine[] = (rawData.finMachines as any[]).map((m) => ({
+      ...m,
+      created_at: '2026-01-01T00:00:00Z',
+      updated_at: new Date().toISOString(),
+    }));
+
+    const existingOtherMachines = this.machines.filter(
+      (m) => !m.id.startsWith('mach-tube-') && !m.id.startsWith('mach-fin-')
+    );
+    this.machines = [...rawTube, ...rawFin, ...existingOtherMachines];
+
+    this.modelProcessCosts = rawData.allModelCosts as ModelProcessCost[];
+    this.heatExchangerMatrix = rawData.matrixRAC as HeatExchangerMatrix[];
+    this.productionForecast = rawData.monthlyForecast as ProductionForecast[];
+    this.finPressCapacities = rawData.finCapacities as FinPressCapacity[];
+
+    saveToStorage('machines', this.machines);
+    saveToStorage('model_process_costs', this.modelProcessCosts);
+    saveToStorage('heat_exchanger_matrix', this.heatExchangerMatrix);
+    saveToStorage('production_forecast', this.productionForecast);
+    saveToStorage('fin_press_capacities', this.finPressCapacities);
+
+    const stats = {
+      machinesSynced: rawTube.length + rawFin.length,
+      modelCostsSynced: this.modelProcessCosts.length,
+      matrixSpecsSynced: this.heatExchangerMatrix.length,
+      forecastMonths: this.productionForecast.length,
+      finCapacitiesSynced: this.finPressCapacities.length,
+      timestamp: new Date().toISOString(),
+    };
+
+    this.logAudit('DATA_CENTER_SYNC', 'system', undefined, stats);
+    this.notify();
+    return { success: true, stats };
+  }
+
   // --- RESET TO DEMO DATA ---
   public resetToSeedData() {
     this.sections = SEED_SECTIONS;
@@ -632,6 +800,10 @@ class Store {
     this.partCosts = SEED_PART_COSTS;
     this.machineImages = SEED_MACHINE_IMAGES;
     this.documents = SEED_DOCUMENTS;
+    this.modelProcessCosts = SEED_MODEL_PROCESS_COSTS;
+    this.heatExchangerMatrix = SEED_HEAT_EXCHANGER_MATRIX;
+    this.productionForecast = SEED_PRODUCTION_FORECAST;
+    this.finPressCapacities = SEED_FIN_PRESS_CAPACITIES;
     this.currentUser = SEED_USERS[0];
 
     saveToStorage('sections', this.sections);
@@ -648,6 +820,10 @@ class Store {
     saveToStorage('part_costs', this.partCosts);
     saveToStorage('machine_images', this.machineImages);
     saveToStorage('documents', this.documents);
+    saveToStorage('model_process_costs', this.modelProcessCosts);
+    saveToStorage('heat_exchanger_matrix', this.heatExchangerMatrix);
+    saveToStorage('production_forecast', this.productionForecast);
+    saveToStorage('fin_press_capacities', this.finPressCapacities);
     saveToStorage('current_user', this.currentUser);
 
     this.logAudit('RESET', 'system', undefined, { message: 'Database reset to default AC factory seed data' });

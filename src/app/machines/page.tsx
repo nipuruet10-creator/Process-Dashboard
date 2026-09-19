@@ -169,6 +169,7 @@ export default function MachinesPage() {
                 <th className="py-3 px-4">Section & Line</th>
                 <th className="py-3 px-4">Type</th>
                 <th className="py-3 px-4">Brand & Model</th>
+                <th className="py-3 px-3 text-right">Capacity / Hr</th>
                 <th className="py-3 px-4">Status</th>
                 <th className="py-3 px-4 text-right">Action</th>
               </tr>
@@ -219,8 +220,11 @@ export default function MachinesPage() {
                     </td>
                     <td className="py-3 px-4">{m.machine_type}</td>
                     <td className="py-3 px-4">
-                      <span className="font-medium text-slate-800">{m.brand || '-'}</span>
+                      <span className="font-medium text-slate-800">{m.manufacturer || m.brand || '-'}</span>
                       <p className="text-[11px] text-slate-400">{m.model || '-'}</p>
+                    </td>
+                    <td className="py-3 px-3 text-right font-mono font-bold text-blue-700">
+                      {m.capacity_per_hr ? `${m.capacity_per_hr} pcs` : '-'}
                     </td>
                     <td className="py-3 px-4">
                       <Badge
@@ -251,7 +255,7 @@ export default function MachinesPage() {
 
               {filteredMachines.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-slate-400 text-xs">
+                  <td colSpan={9} className="py-12 text-center text-slate-400 text-xs">
                     No machines match the selected filter criteria.
                   </td>
                 </tr>

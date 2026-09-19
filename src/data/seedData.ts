@@ -14,7 +14,12 @@ import {
   MachineImage,
   DocumentItem,
   UserProfile,
+  ModelProcessCost,
+  HeatExchangerMatrix,
+  ProductionForecast,
+  FinPressCapacity,
 } from '../types';
+import rawData from './rawExtractedData.json';
 
 export const SEED_USERS: UserProfile[] = [
   {
@@ -48,6 +53,50 @@ export const SEED_USERS: UserProfile[] = [
 ];
 
 export const SEED_SECTIONS: Section[] = [
+  {
+    id: 'sec-tube',
+    code: 'SEC-TUBE',
+    name: 'Tube Processing Section',
+    department: 'Process Development & IE',
+    description: 'High-precision copper tube cutting, return U bending, hairpin bending, O-ring insertion, ring loading, and automated brazing for AC heat exchangers.',
+    responsible_person: 'Engr. Miaji & Engr. Anis (ESM Team)',
+    photo_url: 'https://images.unsplash.com/photo-1504917599217-d4dc5ebe6122?w=800&auto=format&fit=crop&q=60',
+    status: 'Active',
+    sort_order: 1,
+    target_oee: 94.0,
+    line_speed: '1400 pcs/hr',
+    target_takt_time_sec: 18,
+    sub_sections: [
+      { id: 'sub-tb-1', name: 'Return U Bending & O-Ring Station', code: 'SUB-TB-01', description: '7mm & 5mm R1/R2 return U bending with OMS and JDM machines' },
+      { id: 'sub-tb-2', name: 'Ring Loading & Multi-Cut Station', code: 'SUB-TB-02', description: 'Automatic solder ring insertion and precision tube cutting' },
+      { id: 'sub-tb-3', name: 'Automatic Induction Brazing Unit', code: 'SUB-TB-03', description: 'SK Brazing & CACL automatic coil distributor brazing' },
+      { id: 'sub-tb-4', name: 'Header Punching & End-Spinning', code: 'SUB-TB-04', description: 'Copper manifold hole punching, washing, and end-forming' },
+    ],
+    created_at: '2026-01-08T08:00:00Z',
+    updated_at: '2026-03-01T10:00:00Z',
+  },
+  {
+    id: 'sec-fin',
+    code: 'SEC-FIN',
+    name: 'Fin Press & Heat Exchanger Section',
+    department: 'Process Development & IE',
+    description: 'High-speed progressive stamping of hydrophilic aluminum fins (5mm and 7mm), hairpin insertion, and vertical mechanical coil expansion.',
+    responsible_person: 'Engr. Tanvir Ahmed (Senior IE Specialist)',
+    photo_url: 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=800&auto=format&fit=crop&q=60',
+    status: 'Active',
+    sort_order: 2,
+    target_oee: 92.5,
+    line_speed: '250 strokes/min',
+    target_takt_time_sec: 40,
+    sub_sections: [
+      { id: 'sub-fp-1', name: 'High-Speed Fin Press 1 (HSFP-01)', code: 'SUB-FP-01', description: '7mm progressive die fin stamping with slitting' },
+      { id: 'sub-fp-2', name: 'High-Speed Fin Press 3 (HSFP-03)', code: 'SUB-FP-02', description: '5mm high-speed thin fin punching for micro-groove coils' },
+      { id: 'sub-fp-3', name: 'Hairpin Bending & Lacing Cell', code: 'SUB-FP-03', description: 'Multi-tube CNC hairpin bending and automatic stack lacing' },
+      { id: 'sub-fp-4', name: 'Vertical Hydraulic Expander Bay', code: 'SUB-FP-04', description: 'Multi-bullet mechanical expansion for tube-to-fin bond' },
+    ],
+    created_at: '2026-01-08T09:00:00Z',
+    updated_at: '2026-03-01T10:00:00Z',
+  },
   {
     id: 'sec-indoor',
     code: 'SEC-INDOOR',
@@ -253,7 +302,21 @@ export const SEED_SECTIONS: Section[] = [
   },
 ];
 
+const RAW_TUBE_MACHINES: Machine[] = (rawData.tubeMachines as any[]).map((m) => ({
+  ...m,
+  created_at: '2026-01-01T00:00:00Z',
+  updated_at: '2026-03-01T00:00:00Z',
+}));
+
+const RAW_FIN_MACHINES: Machine[] = (rawData.finMachines as any[]).map((m) => ({
+  ...m,
+  created_at: '2026-01-01T00:00:00Z',
+  updated_at: '2026-03-01T00:00:00Z',
+}));
+
 export const SEED_MACHINES: Machine[] = [
+  ...RAW_TUBE_MACHINES,
+  ...RAW_FIN_MACHINES,
   {
     id: 'm-vac-01',
     machine_id: 'VAC-01',
@@ -637,6 +700,121 @@ export const SEED_MACHINES: Machine[] = [
 ];
 
 export const SEED_PROCESSES: Process[] = [
+  {
+    id: 'proc-tube-01',
+    name: 'Copper Return U Bending (7mm & 5mm R1/R2)',
+    section_id: 'sec-tube',
+    machine_id: 'mach-tube-1',
+    line: 'Tube Processing Area',
+    sub_process: 'Precision U Bending',
+    description: 'Automatic high-speed cutting and bending of copper tubes into U-bends for heat exchanger coils.',
+    input_spec: 'Level-wound coil copper tube 7mm / 5mm O.D.',
+    output_spec: 'Dimensionally accurate U-bends with zero ovality > 5%',
+    manpower: 1,
+    cycle_time_sec: 2.5,
+    sam_sec: 3.0,
+    hourly_capacity: 1400,
+    process_cost: 0.85,
+    quality_check: 'Check bend radius R1/R2 and leg length with vernier caliper',
+    critical_parameters: 'Leg length tolerance ±0.3mm, wall thinning < 12%',
+    sop_url: 'https://docs.waltonbd.com/sop/tube-01',
+    work_instruction: 'Feed copper coil through straightener rollers, set stroke length on HMI, initiate auto cycle.',
+    remarks: 'JDM High-Speed U Bending Machine',
+    created_at: '2026-01-20T08:00:00Z',
+    updated_at: '2026-03-01T10:00:00Z',
+  },
+  {
+    id: 'proc-tube-02',
+    name: 'Automated O-Ring Insertion & Degreasing',
+    section_id: 'sec-tube',
+    machine_id: 'mach-tube-3',
+    line: 'Tube Processing Area',
+    sub_process: 'O-Ring Assembly',
+    description: 'Insert nitrile rubber O-rings onto return U bends followed by ultrasonic cleaning.',
+    input_spec: '7mm Return U bends, NBR O-rings',
+    output_spec: 'Cleaned U bends with seated O-ring in groove',
+    manpower: 1,
+    cycle_time_sec: 1.2,
+    sam_sec: 1.5,
+    hourly_capacity: 3000,
+    process_cost: 0.45,
+    quality_check: 'Visual inspection for missing or twisted O-rings',
+    critical_parameters: '100% seating in designated groove',
+    sop_url: 'https://docs.waltonbd.com/sop/tube-02',
+    work_instruction: 'Fill hopper with O-rings, feed U-bends to rotary vibrating bowl.',
+    remarks: 'JDM / Colego O-ring insertion unit',
+    created_at: '2026-01-20T08:00:00Z',
+    updated_at: '2026-03-01T10:00:00Z',
+  },
+  {
+    id: 'proc-tube-03',
+    name: 'Automatic Multi-Torch Induction Brazing (Distributor & Header)',
+    section_id: 'sec-tube',
+    machine_id: 'mach-tube-10',
+    line: 'Tube Processing Area',
+    sub_process: 'CACL / SK Auto Brazing',
+    description: 'Simultaneous multi-joint silver brazing of capillary tubes to distributor body and header pipe.',
+    input_spec: 'Copper header, copper capillary lines, BCuP-2 solder rings',
+    output_spec: 'Hermetically bonded header distributor assembly with 360° fillet',
+    manpower: 2,
+    cycle_time_sec: 35.0,
+    sam_sec: 42.0,
+    hourly_capacity: 100,
+    process_cost: 8.50,
+    quality_check: 'Boroscope internal inspection, pressurized N2 bubble leak test @ 3.0 MPa',
+    critical_parameters: 'Purge N2 gas flow 5-8 L/min, braze temp 720°C ± 15°C',
+    sop_url: 'https://docs.waltonbd.com/sop/tube-03',
+    work_instruction: 'Clamp header in pneumatic jig, fit preformed solder rings, start automatic rotating flame cycle.',
+    remarks: 'SK Brazing / CACL Automatic Brazing Machine',
+    created_at: '2026-01-20T08:00:00Z',
+    updated_at: '2026-03-01T10:00:00Z',
+  },
+  {
+    id: 'proc-fin-01',
+    name: 'Hydrophilic Aluminum Fin Progressive Stamping (HSFP-01 / HSFP-03)',
+    section_id: 'sec-fin',
+    machine_id: 'mach-fin-3',
+    line: 'Fin Press & Expander Bay',
+    sub_process: 'High Speed Stamping',
+    description: 'High-speed multi-row progressive stamping and slitting of 5mm & 7mm hydrophilic aluminum fins with louvered pattern.',
+    input_spec: 'Hydrophilic aluminum foil coil 0.095mm thickness',
+    output_spec: 'Corrugated louver fins with formed collars at 250 strokes/min',
+    manpower: 1,
+    cycle_time_sec: 0.24,
+    sam_sec: 0.30,
+    hourly_capacity: 15000,
+    process_cost: 0.15,
+    quality_check: 'Collar height & hole pitch check with optical profile projector',
+    critical_parameters: 'Collar height tolerance ±0.03mm, zero burrs > 0.015mm',
+    sop_url: 'https://docs.waltonbd.com/sop/fin-01',
+    work_instruction: 'Mount aluminum coil on decoiler, lace foil through oiler and progressive die, set stroke counter.',
+    remarks: 'Hidaka / Sanei High Speed Fin Press HSFP-03',
+    created_at: '2026-01-20T08:00:00Z',
+    updated_at: '2026-03-01T10:00:00Z',
+  },
+  {
+    id: 'proc-fin-02',
+    name: 'Hairpin Insertion & Mechanical Vertical Expansion',
+    section_id: 'sec-fin',
+    machine_id: 'mach-fin-1',
+    line: 'Fin Press & Expander Bay',
+    sub_process: 'Coil Expansion & Bonding',
+    description: 'Lacing U-hairpins into aluminum fin pack and driving carbide bullets vertically through copper tubes to lock fin-to-tube heat transfer.',
+    input_spec: 'Stacked fin block, 5mm / 7mm copper hairpins',
+    output_spec: 'Expanded heat exchanger coil with zero tube-fin air gap',
+    manpower: 2,
+    cycle_time_sec: 40.1,
+    sam_sec: 45.0,
+    hourly_capacity: 89.7,
+    process_cost: 16.20,
+    quality_check: 'Tube pull test (bonding force > 40N/fin), overall block squareness',
+    critical_parameters: 'Expansion bullet diameter, hydraulic cylinder pressure 120-140 bar',
+    sop_url: 'https://docs.waltonbd.com/sop/fin-02',
+    work_instruction: 'Clamp fin stack into vertical fixture, insert hairpins, engage hydraulic expander cycle.',
+    remarks: 'Vertical Expander with 7.75h shift standard capacity',
+    created_at: '2026-01-20T08:00:00Z',
+    updated_at: '2026-03-01T10:00:00Z',
+  },
   {
     id: 'proc-01',
     name: 'Indoor Chassis & Base Assembly',
@@ -1500,3 +1678,9 @@ export const SEED_DOCUMENTS: DocumentItem[] = [
     updated_at: '2026-02-18T00:00:00Z',
   },
 ];
+
+export const SEED_MODEL_PROCESS_COSTS: ModelProcessCost[] = rawData.allModelCosts as ModelProcessCost[];
+export const SEED_HEAT_EXCHANGER_MATRIX: HeatExchangerMatrix[] = rawData.matrixRAC as HeatExchangerMatrix[];
+export const SEED_PRODUCTION_FORECAST: ProductionForecast[] = rawData.monthlyForecast as ProductionForecast[];
+export const SEED_FIN_PRESS_CAPACITIES: FinPressCapacity[] = rawData.finCapacities as FinPressCapacity[];
+

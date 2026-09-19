@@ -26,11 +26,15 @@ import {
   Upload,
   ArrowRight,
   Database,
+  RefreshCw,
+  HardDrive,
+  Check,
 } from 'lucide-react';
 import { store } from '../../lib/store';
 import { Badge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
 import { parseExcelUpload } from '../../lib/excel';
+import { formatCurrencyBDT, formatNumber } from '../../lib/calculations';
 import {
   Section,
   SectionStatus,
@@ -42,6 +46,7 @@ import {
   CustomTable,
   TargetEntity,
   UserRole,
+  ModelProcessCost,
 } from '../../types';
 
 type AdminTab =
@@ -49,6 +54,8 @@ type AdminTab =
   | 'sections'
   | 'machines'
   | 'processes'
+  | 'costs'
+  | 'datacenter'
   | 'fields'
   | 'tables'
   | 'import'
@@ -88,6 +95,26 @@ function AdminDashboardContent() {
   const [isProcessModalOpen, setIsProcessModalOpen] = useState(false);
   const [isFieldModalOpen, setIsFieldModalOpen] = useState(false);
   const [isTableModalOpen, setIsTableModalOpen] = useState(false);
+  const [isModelCostModalOpen, setIsModelCostModalOpen] = useState(false);
+  const [editingModelCostId, setEditingModelCostId] = useState<string | null>(null);
+  const [costModelSearch, setCostModelSearch] = useState('');
+  const [costSeriesFilter, setCostSeriesFilter] = useState('All');
+  const [syncStatusMessage, setSyncStatusMessage] = useState<string | null>(null);
+  const [modelCostForm, setModelCostForm] = useState({
+    model_code: '',
+    series: 'Residential AC (RAC)',
+    capacity_ton: '1.0 Ton',
+    source_file: 'Manual Entry',
+    operation_count: 50,
+    total_cycle_time_sec: 1200,
+    sam_sec: 1400,
+    total_manpower: 18,
+    utility_cost_bdt: 120,
+    manpower_cost_bdt: 750,
+    area_cost_bdt: 70,
+    mould_tooling_cost_bdt: 180,
+    total_process_cost_bdt: 1120,
+  });
 
   // Section Form state (Create)
   const [secForm, setSecForm] = useState({
@@ -417,7 +444,94 @@ function AdminDashboardContent() {
     setIsTableModalOpen(false);
   };
 
+  // Model Process Cost Handlers
+  const handleOpenNewModelCost = () => {
+    setEditingModelCostId(null);
+    setModelCostForm({
+      model_code: '',
+      series: 'Residential AC (RAC)',
+      capacity_ton: '1.0 Ton',
+      source_file: 'Manual / Admin Entry',
+      operation_count: 50,
+      total_cycle_time_sec: 1200,
+      sam_sec: 1400,
+      total_manpower: 18,
+      utility_cost_bdt: 120,
+      manpower_cost_bdt: 750,
+      area_cost_bdt: 70,
+      mould_tooling_cost_bdt: 180,
+      total_process_cost_bdt: 1120,
+    });
+    setIsModelCostModalOpen(true);
+  };
+
+  const handleOpenEditModelCost = (m: ModelProcessCost) => {
+    setEditingModelCostId(m.id);
+    setModelCostForm({
+      model_code: m.model_code,
+      series: m.series,
+      capacity_ton: m.capacity_ton,
+      source_file: m.source_file,
+      operation_count: m.operation_count,
+      total_cycle_time_sec: m.total_cycle_time_sec,
+      sam_sec: m.sam_sec,
+      total_manpower: m.total_manpower,
+      utility_cost_bdt: m.utility_cost_bdt,
+      manpower_cost_bdt: m.manpower_cost_bdt,
+      area_cost_bdt: m.area_cost_bdt,
+      mould_tooling_cost_bdt: m.mould_tooling_cost_bdt,
+      total_process_cost_bdt: m.total_process_cost_bdt,
+    });
+    setIsModelCostModalOpen(true);
+  };
+
+  const handleSaveModelCost = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isReadOnly) return alert('Viewer role has read-only access.');
+    if (!modelCostForm.model_code) return alert('Please enter model code.');
+
+    if (editingModelCostId) {
+      store.updateModelProcessCost(editingModelCostId, {
+        ...modelCostForm,
+        operation_count: Number(modelCostForm.operation_count) || 0,
+        total_cycle_time_sec: Number(modelCostForm.total_cycle_time_sec) || 0,
+        sam_sec: Number(modelCostForm.sam_sec) || 0,
+        total_manpower: Number(modelCostForm.total_manpower) || 0,
+        utility_cost_bdt: Number(modelCostForm.utility_cost_bdt) || 0,
+        manpower_cost_bdt: Number(modelCostForm.manpower_cost_bdt) || 0,
+        area_cost_bdt: Number(modelCostForm.area_cost_bdt) || 0,
+        mould_tooling_cost_bdt: Number(modelCostForm.mould_tooling_cost_bdt) || 0,
+        total_process_cost_bdt: Number(modelCostForm.total_process_cost_bdt) || 0,
+      });
+    } else {
+      store.addModelProcessCost({
+        ...modelCostForm,
+        operation_count: Number(modelCostForm.operation_count) || 0,
+        total_cycle_time_sec: Number(modelCostForm.total_cycle_time_sec) || 0,
+        sam_sec: Number(modelCostForm.sam_sec) || 0,
+        total_manpower: Number(modelCostForm.total_manpower) || 0,
+        utility_cost_bdt: Number(modelCostForm.utility_cost_bdt) || 0,
+        manpower_cost_bdt: Number(modelCostForm.manpower_cost_bdt) || 0,
+        area_cost_bdt: Number(modelCostForm.area_cost_bdt) || 0,
+        mould_tooling_cost_bdt: Number(modelCostForm.mould_tooling_cost_bdt) || 0,
+        total_process_cost_bdt: Number(modelCostForm.total_process_cost_bdt) || 0,
+      });
+    }
+    setIsModelCostModalOpen(false);
+  };
+
+  const handleDataCenterSync = () => {
+    const res = store.syncFromRawExtractedData();
+    if (res.success) {
+      setSyncStatusMessage(
+        `Synchronized Data Center: ${res.stats.machinesSynced} Machines, ${res.stats.modelCostsSynced} Models, ${res.stats.matrixSpecsSynced} Tech Specs, ${res.stats.finCapacitiesSynced} Coil Capacities.`
+      );
+      setTimeout(() => setSyncStatusMessage(null), 8000);
+    }
+  };
+
   // Excel Upload Parser
+
   const handleExcelUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -581,6 +695,8 @@ function AdminDashboardContent() {
           { id: 'sections', label: 'Sections', count: store.sections.length, icon: Grid },
           { id: 'machines', label: 'Machines', count: store.machines.length, icon: Cpu },
           { id: 'processes', label: 'Processes', count: store.processes.length, icon: Workflow },
+          { id: 'costs', label: 'Model Costs', count: store.modelProcessCosts.length, icon: DollarSign },
+          { id: 'datacenter', label: 'Data Center & Raw Sync', icon: Database },
           { id: 'fields', label: 'Dynamic Fields', count: store.customFields.length, icon: Sliders },
           { id: 'tables', label: 'Dynamic Tables', count: store.customTables.length, icon: TableIcon },
           { id: 'import', label: 'Excel Import Wizard', icon: FileSpreadsheet },
@@ -1272,6 +1388,264 @@ function AdminDashboardContent() {
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* TAB: MODEL PROCESS COSTS */}
+      {activeTab === 'costs' && (
+        <div className="space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs">
+            <div>
+              <h3 className="text-sm font-black uppercase text-slate-900 tracking-wide">
+                Model-Wise Process Cost Directory
+              </h3>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Manage engineered process cost structures, SAM, cycle times, utility, and manpower for all Walton AC models
+              </p>
+            </div>
+
+            <button
+              onClick={handleOpenNewModelCost}
+              className="inline-flex items-center rounded-xl bg-blue-600 px-3.5 py-2 text-xs font-bold text-white hover:bg-blue-700 transition shadow-xs"
+            >
+              <Plus className="mr-1.5 h-3.5 w-3.5" />
+              Add Model Cost
+            </button>
+          </div>
+
+          {/* Search & Series Filters */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
+            <div className="flex items-center space-x-2">
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Series:</span>
+              <select
+                value={costSeriesFilter}
+                onChange={(e) => setCostSeriesFilter(e.target.value)}
+                className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-800 focus:border-blue-500 focus:outline-hidden"
+              >
+                <option value="All">All Series ({store.modelProcessCosts.length})</option>
+                {Array.from(new Set(store.modelProcessCosts.map((m) => m.series))).map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="relative w-full sm:w-64">
+              <input
+                type="text"
+                placeholder="Search model code..."
+                value={costModelSearch}
+                onChange={(e) => setCostModelSearch(e.target.value)}
+                className="w-full rounded-xl border border-slate-200 px-3 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:border-blue-500 focus:outline-hidden"
+              />
+            </div>
+          </div>
+
+          {/* Table */}
+          <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-xs">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-slate-200 text-left text-xs">
+                <thead className="bg-slate-50 font-bold uppercase tracking-wider text-slate-600 text-[10px]">
+                  <tr>
+                    <th className="py-3 px-4">Model Code</th>
+                    <th className="py-3 px-3">Series</th>
+                    <th className="py-3 px-3">Capacity</th>
+                    <th className="py-3 px-3 text-right">Ops</th>
+                    <th className="py-3 px-3 text-right">Cycle (s)</th>
+                    <th className="py-3 px-3 text-right">SAM (s)</th>
+                    <th className="py-3 px-3 text-right">Manpower</th>
+                    <th className="py-3 px-3 text-right">Utility (BDT)</th>
+                    <th className="py-3 px-3 text-right">Manpower (BDT)</th>
+                    <th className="py-3 px-3 text-right">Total Cost (BDT)</th>
+                    <th className="py-3 px-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-slate-700">
+                  {store.modelProcessCosts
+                    .filter((m) => {
+                      const matchSeries = costSeriesFilter === 'All' || m.series === costSeriesFilter;
+                      const matchSearch =
+                        m.model_code.toLowerCase().includes(costModelSearch.toLowerCase()) ||
+                        m.capacity_ton.toLowerCase().includes(costModelSearch.toLowerCase());
+                      return matchSeries && matchSearch;
+                    })
+                    .map((m) => (
+                      <tr key={m.id} className="hover:bg-slate-50">
+                        <td className="py-3 px-4 font-bold text-slate-900">{m.model_code}</td>
+                        <td className="py-3 px-3">
+                          <span className="inline-flex px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700">
+                            {m.series}
+                          </span>
+                        </td>
+                        <td className="py-3 px-3 font-semibold text-slate-700">{m.capacity_ton}</td>
+                        <td className="py-3 px-3 text-right font-mono">{m.operation_count}</td>
+                        <td className="py-3 px-3 text-right font-mono">{m.total_cycle_time_sec}s</td>
+                        <td className="py-3 px-3 text-right font-mono font-bold text-indigo-700">{m.sam_sec}s</td>
+                        <td className="py-3 px-3 text-right font-mono">{m.total_manpower}</td>
+                        <td className="py-3 px-3 text-right font-mono text-emerald-700">
+                          {formatCurrencyBDT(m.utility_cost_bdt)}
+                        </td>
+                        <td className="py-3 px-3 text-right font-mono text-blue-700">
+                          {formatCurrencyBDT(m.manpower_cost_bdt)}
+                        </td>
+                        <td className="py-3 px-3 text-right font-mono font-black text-slate-900">
+                          {formatCurrencyBDT(m.total_process_cost_bdt)}
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          <div className="flex items-center justify-end space-x-2">
+                            <button
+                              onClick={() => handleOpenEditModelCost(m)}
+                              className="text-slate-400 hover:text-blue-600 transition"
+                              title="Edit"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => {
+                                if (confirm(`Delete cost entry for "${m.model_code}"?`)) {
+                                  store.deleteModelProcessCost(m.id);
+                                }
+                              }}
+                              className="text-slate-400 hover:text-rose-600 transition"
+                              title="Delete"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB: DATA CENTER & RAW SYNC */}
+      {activeTab === 'datacenter' && (
+        <div className="space-y-6">
+          {syncStatusMessage && (
+            <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-800 text-xs font-bold flex items-center justify-between shadow-xs">
+              <div className="flex items-center space-x-2">
+                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                <span>{syncStatusMessage}</span>
+              </div>
+              <button onClick={() => setSyncStatusMessage(null)} className="text-emerald-600 hover:text-emerald-800">
+                Dismiss
+              </button>
+            </div>
+          )}
+
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white p-6 rounded-2xl shadow-md">
+            <div>
+              <div className="flex items-center space-x-2 mb-1">
+                <span className="rounded bg-blue-500/30 border border-blue-400/30 px-2 py-0.5 text-[10px] font-mono tracking-wider uppercase text-blue-200">
+                  Data Center Hub
+                </span>
+                <span className="text-xs text-blue-300">•</span>
+                <span className="text-xs text-blue-200">Process-Dashboard-data</span>
+              </div>
+              <h2 className="text-xl font-black tracking-tight uppercase">
+                Walton AC Process Engineering Data Center
+              </h2>
+              <p className="text-xs text-blue-200 mt-1 max-w-2xl">
+                Primary data extraction pipeline linking real Excel production records with live dashboards. Re-sync anytime new files are uploaded.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={handleDataCenterSync}
+                className="inline-flex items-center rounded-xl bg-blue-500 px-4 py-2 text-xs font-bold text-white hover:bg-blue-400 transition shadow-xs"
+              >
+                <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
+                Re-Sync from Files
+              </button>
+              <button
+                onClick={() => {
+                  if (confirm('Are you sure you want to reset all data back to factory seed defaults?')) {
+                    store.resetToSeedData();
+                    alert('System database reset to seed data.');
+                  }
+                }}
+                className="inline-flex items-center rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-xs font-semibold text-white hover:bg-white/20 transition"
+              >
+                Reset Database
+              </button>
+            </div>
+          </div>
+
+          {/* Synchronized Data Entities Status Cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-2xs">
+              <span className="text-[10px] font-black uppercase text-slate-400 block mb-1">Tube Machines</span>
+              <span className="text-2xl font-black text-blue-600">31</span>
+              <span className="text-[10px] text-slate-500 block mt-0.5">JDM, OMS, Colego</span>
+            </div>
+
+            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-2xs">
+              <span className="text-[10px] font-black uppercase text-slate-400 block mb-1">Fin Presses</span>
+              <span className="text-2xl font-black text-indigo-600">5</span>
+              <span className="text-[10px] text-slate-500 block mt-0.5">HSFP-01, HSFP-03</span>
+            </div>
+
+            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-2xs">
+              <span className="text-[10px] font-black uppercase text-slate-400 block mb-1">Model Costs</span>
+              <span className="text-2xl font-black text-emerald-600">{store.modelProcessCosts.length}</span>
+              <span className="text-[10px] text-slate-500 block mt-0.5">RAC, CAC, VRF, ERV</span>
+            </div>
+
+            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-2xs">
+              <span className="text-[10px] font-black uppercase text-slate-400 block mb-1">Coil Capacities</span>
+              <span className="text-2xl font-black text-amber-600">{store.finPressCapacities.length}</span>
+              <span className="text-[10px] text-slate-500 block mt-0.5">7.75h Shifts @ 70%</span>
+            </div>
+
+            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-2xs">
+              <span className="text-[10px] font-black uppercase text-slate-400 block mb-1">Technical Specs</span>
+              <span className="text-2xl font-black text-purple-600">{store.heatExchangerMatrix.length}</span>
+              <span className="text-[10px] text-slate-500 block mt-0.5">5mm vs 7mm Matrix</span>
+            </div>
+
+            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-2xs">
+              <span className="text-[10px] font-black uppercase text-slate-400 block mb-1">Forecast Months</span>
+              <span className="text-2xl font-black text-rose-600">{store.productionForecast.length}</span>
+              <span className="text-[10px] text-slate-500 block mt-0.5">July - June targets</span>
+            </div>
+          </div>
+
+          {/* Catalog of Source Files */}
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs space-y-4">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800">
+              Active Source Files (E:\Antigravity\Process Automation Projects\Process-Dashboard-data)
+            </h3>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {[
+                { name: 'Process_cost - Combined.xlsx', type: 'Costing & Operations', records: '17 Models, 1,820 Ops', status: 'Synchronized' },
+                { name: 'Tube machine list & spare parts.xlsx', type: 'Machinery & Suppliers', records: '31 Production Machines', status: 'Synchronized' },
+                { name: 'Coil Capacity - Fin Press.xlsx', type: 'Capacity Engineering', records: '13 Coil Configurations', status: 'Synchronized' },
+                { name: '5mm & 7mm Matrix RAC.xlsx', type: 'Heat Exchanger Geometry', records: '22 Technical Matrix Rows', status: 'Synchronized' },
+                { name: 'Heat Exchanger Matrix.xlsx', type: 'Hairpins & Pattern Specs', records: 'Matrix Specifications', status: 'Synchronized' },
+                { name: 'Machine-Capacity-SAM.xlsx', type: 'Cycle Times & Headcount', records: 'Standard Allowed Minutes', status: 'Synchronized' },
+              ].map((f) => (
+                <div key={f.name} className="rounded-xl border border-slate-200 bg-slate-50/50 p-3.5 flex items-start space-x-3">
+                  <div className="rounded-lg bg-blue-100 p-2 text-blue-700 shrink-0">
+                    <FileSpreadsheet className="h-4 w-4" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <span className="text-xs font-bold text-slate-900 truncate block">{f.name}</span>
+                    <span className="text-[11px] text-slate-500 block mt-0.5">{f.type} • {f.records}</span>
+                    <span className="inline-flex items-center text-[10px] font-bold text-emerald-600 mt-1">
+                      <CheckCircle2 className="h-3 w-3 mr-1" /> {f.status}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}
@@ -2037,6 +2411,174 @@ function AdminDashboardContent() {
               className="rounded-lg bg-blue-600 px-4 py-2 text-xs font-bold text-white hover:bg-blue-500"
             >
               Build Table
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* MODAL: ADD / EDIT MODEL PROCESS COST */}
+      <Modal
+        isOpen={isModelCostModalOpen}
+        onClose={() => setIsModelCostModalOpen(false)}
+        title={editingModelCostId ? 'Edit Model Process Cost' : 'Add New Model Process Cost'}
+        subtitle="Configure engineered cost components, cycle time, observed SAM, and manpower"
+      >
+        <form onSubmit={handleSaveModelCost} className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">Model Code *</label>
+              <input
+                type="text"
+                required
+                placeholder="e.g. RAC Split 2.0 Ton"
+                value={modelCostForm.model_code}
+                onChange={(e) => setModelCostForm({ ...modelCostForm, model_code: e.target.value })}
+                className="w-full rounded-lg border border-slate-200 p-2 text-xs font-semibold"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">Series / Category *</label>
+              <select
+                value={modelCostForm.series}
+                onChange={(e) => setModelCostForm({ ...modelCostForm, series: e.target.value })}
+                className="w-full rounded-lg border border-slate-200 p-2 text-xs"
+              >
+                <option value="Residential AC (RAC)">Residential AC (RAC)</option>
+                <option value="Cassette Type">Cassette Type</option>
+                <option value="Concealed Duct Type">Concealed Duct Type</option>
+                <option value="Ceiling & Floor Type">Ceiling & Floor Type</option>
+                <option value="VRF Outdoor Unit">VRF Outdoor Unit</option>
+                <option value="Ventilation (ERV)">Ventilation (ERV)</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">Tonnage / Capacity *</label>
+              <input
+                type="text"
+                required
+                placeholder="e.g. 2.0 Ton (24,000 BTU)"
+                value={modelCostForm.capacity_ton}
+                onChange={(e) => setModelCostForm({ ...modelCostForm, capacity_ton: e.target.value })}
+                className="w-full rounded-lg border border-slate-200 p-2 text-xs"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">Operation Count</label>
+              <input
+                type="number"
+                value={modelCostForm.operation_count}
+                onChange={(e) => setModelCostForm({ ...modelCostForm, operation_count: Number(e.target.value) })}
+                className="w-full rounded-lg border border-slate-200 p-2 text-xs font-mono"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">Cycle Time (s)</label>
+              <input
+                type="number"
+                value={modelCostForm.total_cycle_time_sec}
+                onChange={(e) => setModelCostForm({ ...modelCostForm, total_cycle_time_sec: Number(e.target.value) })}
+                className="w-full rounded-lg border border-slate-200 p-2 text-xs font-mono"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">SAM (sec) *</label>
+              <input
+                type="number"
+                required
+                value={modelCostForm.sam_sec}
+                onChange={(e) => setModelCostForm({ ...modelCostForm, sam_sec: Number(e.target.value) })}
+                className="w-full rounded-lg border border-slate-200 p-2 text-xs font-mono font-bold text-indigo-700"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">Total Manpower</label>
+              <input
+                type="number"
+                value={modelCostForm.total_manpower}
+                onChange={(e) => setModelCostForm({ ...modelCostForm, total_manpower: Number(e.target.value) })}
+                className="w-full rounded-lg border border-slate-200 p-2 text-xs font-mono"
+              />
+            </div>
+          </div>
+
+          <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/80 space-y-3">
+            <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block">
+              Cost Component Breakdown (BDT)
+            </span>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div>
+                <label className="text-[11px] font-semibold text-slate-600 block mb-1">Utility (BDT)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={modelCostForm.utility_cost_bdt}
+                  onChange={(e) => setModelCostForm({ ...modelCostForm, utility_cost_bdt: Number(e.target.value) })}
+                  className="w-full rounded-lg border border-slate-200 p-2 text-xs font-mono"
+                />
+              </div>
+              <div>
+                <label className="text-[11px] font-semibold text-slate-600 block mb-1">Manpower (BDT)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={modelCostForm.manpower_cost_bdt}
+                  onChange={(e) => setModelCostForm({ ...modelCostForm, manpower_cost_bdt: Number(e.target.value) })}
+                  className="w-full rounded-lg border border-slate-200 p-2 text-xs font-mono"
+                />
+              </div>
+              <div>
+                <label className="text-[11px] font-semibold text-slate-600 block mb-1">Tooling (BDT)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={modelCostForm.mould_tooling_cost_bdt}
+                  onChange={(e) => setModelCostForm({ ...modelCostForm, mould_tooling_cost_bdt: Number(e.target.value) })}
+                  className="w-full rounded-lg border border-slate-200 p-2 text-xs font-mono"
+                />
+              </div>
+              <div>
+                <label className="text-[11px] font-semibold text-slate-600 block mb-1">Floor Area (BDT)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={modelCostForm.area_cost_bdt}
+                  onChange={(e) => setModelCostForm({ ...modelCostForm, area_cost_bdt: Number(e.target.value) })}
+                  className="w-full rounded-lg border border-slate-200 p-2 text-xs font-mono"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-slate-900 block mb-1">Total Process Cost (BDT) *</label>
+              <input
+                type="number"
+                step="0.01"
+                required
+                value={modelCostForm.total_process_cost_bdt}
+                onChange={(e) => setModelCostForm({ ...modelCostForm, total_process_cost_bdt: Number(e.target.value) })}
+                className="w-full rounded-lg border border-blue-300 p-2 text-sm font-mono font-black text-blue-700 bg-blue-50/30"
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end space-x-2 pt-2 border-t border-slate-100">
+            <button
+              type="button"
+              onClick={() => setIsModelCostModalOpen(false)}
+              className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition shadow-xs"
+            >
+              {editingModelCostId ? 'Update Model Cost' : 'Save Model Cost'}
             </button>
           </div>
         </form>
