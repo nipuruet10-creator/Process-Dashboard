@@ -1,25 +1,431 @@
 @import "tailwindcss";
 
-@layer base {
-  :root {
-    --background: #f8fafc;
-    --foreground: #0f172a;
-    --primary: #0284c7;
-    --primary-foreground: #ffffff;
-    --industrial-navy: #0b132b;
-    --industrial-slate: #1c2541;
-    --industrial-steel: #3a506b;
-  }
+:root {
+  /* =========================================================
+     OPTION 2 — WARM WHITE + DEEP BLUE + AMBER
+     Walton Process Development & Industrial Engineering Theme
+     ========================================================= */
+
+  /* ---------- Page / Surface Backgrounds ---------- */
+  --bg-page:            #FAF9F5;
+  --bg-surface:         #FFFFFF;
+  --bg-surface-soft:    #F7F8F8;
+  --bg-surface-muted:   #F1F3F4;
+  --bg-header:          #FFFFFF;
+  --bg-sidebar:         #082B52;
+  --bg-table-header:    #F3F6F9;
+  --bg-table-total:     #FFF4DD;
+  --bg-hover:           #F5F8FB;
+
+  /* ---------- Deep Blue / Primary Brand ---------- */
+  --blue-900:           #082B52;
+  --blue-800:           #0B3A70;
+  --blue-700:           #124B83;
+  --blue-600:           #1D5D9B;
+  --blue-500:           #3478B8;
+  --blue-400:           #5B95C7;
+  --blue-300:           #8FB6D7;
+  --blue-200:           #C5D9EA;
+  --blue-100:           #E7F0F7;
+  --blue-50:            #F4F8FC;
+
+  /* ---------- Amber / Primary Accent ---------- */
+  --amber-700:          #C47E00;
+  --amber-600:          #D98F00;
+  --amber-500:          #F5A900;
+  --amber-400:          #FFB81C;
+  --amber-300:          #FFC94D;
+  --amber-200:          #FFE09A;
+  --amber-100:          #FFF0C7;
+  --amber-50:           #FFF8E8;
+
+  /* ---------- Copper / Secondary Accent ---------- */
+  --copper-700:         #8F6B3E;
+  --copper-600:         #A78352;
+  --copper-500:         #B89B73;
+  --copper-400:         #C9B08D;
+  --copper-300:         #D8C3A5;
+  --copper-200:         #E5D5BE;
+  --copper-100:         #F0E7DA;
+  --copper-50:          #F8F3EC;
+
+  /* ---------- Text ---------- */
+  --text-primary:       #172B3A;
+  --text-secondary:     #536778;
+  --text-muted:         #7A8A98;
+  --text-subtle:        #98A5AF;
+  --text-disabled:      #B5BEC6;
+
+  --text-on-blue:       #FFFFFF;
+  --text-on-amber:      #172B3A;
+  --text-on-dark:       #FFFFFF;
+
+  /* ---------- Borders / Dividers ---------- */
+  --border-default:     #E1E5E8;
+  --border-light:       #EBEEF0;
+  --border-strong:      #CBD3D9;
+  --border-blue:        #B8CCDE;
+  --border-amber:       #F3CF85;
+  --border-focus:       #F5A900;
+
+  /* ---------- Semantic Status Colors ---------- */
+  --status-success:      #198754;
+  --status-success-dark: #146C43;
+  --status-success-bg:   #E8F5EE;
+  --status-success-border:#B7DEC9;
+  --status-success-text: #146C43;
+
+  --status-warning:      #D98F00;
+  --status-warning-bg:   #FFF4D6;
+  --status-warning-border:#F0D28A;
+  --status-warning-text: #8A5A00;
+
+  --status-error:        #C0392B;
+  --status-error-bg:     #FDECEA;
+  --status-error-border: #E9B8B2;
+  --status-error-text:   #992D22;
+
+  --status-info:         #1D5D9B;
+  --status-info-bg:      #EAF3FA;
+  --status-info-border:  #BCD4E8;
+  --status-info-text:    #124B83;
+
+  /* ---------- Audit Banner ---------- */
+  --audit-bg:            #FFF8E8;
+  --audit-border:        #F5A900;
+  --audit-text:          #8A5A00;
+  --audit-badge-bg:      #FFF0C7;
+  --audit-badge-text:    #A96700;
+
+  /* ---------- Shadows ---------- */
+  --shadow-card:
+    0 2px 8px rgba(23, 43, 58, 0.06);
+
+  --shadow-card-hover:
+    0 5px 16px rgba(23, 43, 58, 0.10);
+
+  --shadow-dropdown:
+    0 8px 24px rgba(23, 43, 58, 0.12);
+
+  --shadow-button:
+    0 2px 5px rgba(8, 43, 82, 0.12);
+
+  /* ---------- Border Radius ---------- */
+  --radius-sm:          6px;
+  --radius-md:          10px;
+  --radius-lg:          14px;
+  --radius-xl:          18px;
+  --radius-pill:        999px;
 }
 
 body {
-  background-color: #f8fafc;
-  color: #0f172a;
+  background-color: var(--bg-page);
+  color: var(--text-primary);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
 }
 
-/* Custom scrollbars for clean industrial ERP look */
+/* ==========================================================================
+   Header & Top Bar (Walton Microchannel Clean Banner)
+   ========================================================================== */
+.header-bar {
+  width: 100%;
+  background: linear-gradient(180deg, #F3F9F6 0%, #E8F5EE 100%);
+  border-bottom: 1px solid #D1E7DC;
+  box-shadow: 0 4px 20px -2px rgba(18, 72, 48, 0.06), 0 2px 6px -1px rgba(0, 0, 0, 0.02);
+}
+
+.header-inner {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 16px 28px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.header-brand {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.header-titles h1 {
+  font-size: 21px;
+  font-weight: 750;
+  color: #082B52;
+  letter-spacing: -0.3px;
+  line-height: 1.25;
+}
+
+.header-titles p {
+  font-size: 12.5px;
+  color: #365747;
+  margin-top: 3px;
+  font-weight: 500;
+  letter-spacing: -0.1px;
+}
+
+/* Multi-Dashboard Navigation Pills */
+.page-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.page-nav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: var(--radius-pill);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--blue-800);
+  background: #FFFFFF;
+  border: 1px solid var(--border-default);
+  text-decoration: none;
+  transition: all 180ms ease;
+  box-shadow: 0 1px 3px rgba(23, 43, 58, 0.04);
+}
+
+.page-nav-link:hover {
+  background: var(--blue-50);
+  border-color: var(--blue-300);
+  color: var(--blue-900);
+}
+
+.page-nav-link.active {
+  background: var(--blue-800);
+  color: #FFFFFF;
+  border-color: var(--blue-800);
+  box-shadow: var(--shadow-button);
+}
+
+/* ==========================================================================
+   Perspective / Engineering Truth Banner
+   ========================================================================== */
+.perspective-banner {
+  background: var(--audit-bg);
+  border: 1px solid var(--border-amber);
+  border-left: 4px solid var(--audit-border);
+  border-radius: var(--radius-sm);
+  padding: 12px 20px;
+  font-size: 13px;
+  color: var(--audit-text);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  box-shadow: var(--shadow-card);
+}
+
+/* ==========================================================================
+   KPI Cards Grid (5 Cards Reference Pattern)
+   ========================================================================== */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.kpi-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  padding: 20px 22px;
+  box-shadow: var(--shadow-card);
+  transition: all 220ms ease;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.kpi-card:hover {
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-card-hover);
+}
+
+.kpi-card.accent-blue {
+  border-top: 3px solid var(--blue-800);
+}
+
+.kpi-card.accent-amber {
+  border-top: 3px solid var(--amber-500);
+}
+
+.kpi-card.accent-copper {
+  border-top: 3px solid var(--copper-500);
+}
+
+.kpi-card.accent-emerald {
+  border-top: 3px solid var(--status-success-dark);
+}
+
+.kpi-card.accent-subtle {
+  border-top: 3px solid var(--blue-400);
+}
+
+.kpi-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--blue-800);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.kpi-value {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--blue-900);
+  margin: 10px 0 6px;
+  letter-spacing: -0.5px;
+}
+
+.kpi-subtext {
+  font-size: 12px;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: auto;
+}
+
+/* ==========================================================================
+   Tabbed Data Explorer & Filters
+   ========================================================================== */
+.explorer-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-top: 3px solid var(--blue-800);
+  border-radius: var(--radius-md);
+  padding: 24px 28px;
+  box-shadow: var(--shadow-card);
+}
+
+.tabs-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--border-default);
+  padding-bottom: 16px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.tab-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 180ms ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tab-btn:hover {
+  color: var(--blue-800);
+  background: var(--bg-hover);
+}
+
+.tab-btn.active {
+  color: #FFFFFF;
+  background: var(--blue-800);
+  box-shadow: var(--shadow-button);
+}
+
+.filter-chip {
+  background: var(--bg-page);
+  border: 1px solid var(--border-default);
+  color: var(--text-secondary);
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 180ms ease;
+  user-select: none;
+}
+
+.filter-chip:hover {
+  background: var(--bg-hover);
+  color: var(--blue-800);
+  border-color: var(--blue-300);
+}
+
+.filter-chip.active {
+  background: var(--blue-800);
+  border-color: var(--blue-800);
+  color: #FFFFFF;
+  box-shadow: var(--shadow-button);
+}
+
+/* ==========================================================================
+   Data Tables
+   ========================================================================== */
+.table-container {
+  overflow-x: auto;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-default);
+  background: var(--bg-surface);
+}
+
+table.walton-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 13px;
+}
+
+table.walton-table th {
+  background: var(--bg-table-header);
+  color: var(--blue-900);
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-default);
+}
+
+table.walton-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-light);
+  color: var(--text-secondary);
+}
+
+table.walton-table tbody tr:hover td {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+table.walton-table tbody tr:nth-child(even) td {
+  background: var(--bg-surface-soft);
+}
+
+table.walton-table .table-total-row td {
+  font-weight: 700;
+  background: var(--bg-table-total);
+  color: var(--blue-900);
+  border-top: 2px solid var(--border-amber);
+  border-bottom: 2px solid var(--border-amber);
+}
+
+/* Custom scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;

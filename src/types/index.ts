@@ -274,6 +274,7 @@ export type CostCategory =
   | 'Consumables'
   | 'Maintenance'
   | 'Depreciation'
+  | 'Tooling & Mould'
   | 'Other';
 
 export interface CostRecord {

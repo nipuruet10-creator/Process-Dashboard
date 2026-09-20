@@ -78,25 +78,23 @@ export const Header: React.FC = () => {
 
   return (
     <>
-      <header className="sticky top-0 z-30 flex h-20 w-full items-center justify-between border-b border-slate-200 bg-white/95 px-6 backdrop-blur-md">
+      <header className="sticky top-0 z-30 flex h-20 w-full items-center justify-between border-b border-[#D1E7DC] bg-gradient-to-r from-[#F3F9F6] via-[#FAF9F5] to-white px-6 shadow-xs backdrop-blur-md">
         {/* Left branding & title */}
         <div className="flex items-center space-x-4">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-blue-700 via-sky-600 to-indigo-800 text-white shadow-md shadow-blue-500/20">
-            <Layers className="h-6 w-6" />
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#082B52] text-white shadow-md shadow-blue-900/20">
+            <Layers className="h-6 w-6 text-amber-400" />
           </div>
           <div>
             <div className="flex items-center space-x-2">
-              <h1 className="text-base sm:text-lg font-black tracking-tight text-slate-900 uppercase">
-                Process Development & Industrial Engineering
+              <h1 className="text-base sm:text-lg font-black tracking-tight text-[#082B52] uppercase">
+                AC Process Development & Industrial Engineering
               </h1>
-              <span className="hidden md:inline-flex items-center rounded-md bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-700 border border-blue-200 uppercase tracking-wider">
-                AC Division
+              <span className="hidden md:inline-flex items-center rounded-full bg-[#E8F5EE] px-2.5 py-0.5 text-[10px] font-bold text-[#146C43] border border-[#B7DEC9] uppercase tracking-wider">
+                Walton RAC
               </span>
             </div>
-            <p className="text-xs font-medium text-slate-500 tracking-wide">
-              Machine <span className="text-slate-300">|</span> Process <span className="text-slate-300">|</span> Cost{' '}
-              <span className="text-slate-300">|</span> SAM <span className="text-slate-300">|</span> Capacity{' '}
-              <span className="text-slate-300">|</span> Specification <span className="text-slate-300">|</span> Documentation
+            <p className="text-xs font-medium text-[#536778] tracking-wide">
+              Process Development Division <span className="text-slate-300">|</span> Machine <span className="text-slate-300">•</span> Process Cost <span className="text-slate-300">•</span> SAM <span className="text-slate-300">•</span> Capacity <span className="text-slate-300">•</span> Specification
             </p>
           </div>
         </div>

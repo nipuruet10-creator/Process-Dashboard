@@ -356,47 +356,47 @@ export default function SectionDetailPage() {
 
       {/* Overview Top Metric Cards */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-2xs">
-          <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Sub-Sections</p>
-          <h4 className="mt-1 text-2xl font-extrabold text-indigo-600">
+        <div className="rounded-xl border border-[#E1E5E8] border-t-3 border-t-[#082B52] bg-white p-4 shadow-2xs">
+          <p className="text-[11px] font-bold text-[#536778] uppercase tracking-wider">Sub-Sections</p>
+          <h4 className="mt-1 text-2xl font-extrabold text-[#082B52]">
             {section.sub_sections?.length || 0}
           </h4>
           <p className="text-[10px] text-slate-400 mt-0.5">Production Cells</p>
         </div>
 
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-2xs">
-          <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Machines</p>
-          <h4 className="mt-1 text-2xl font-extrabold text-slate-900">{machines.length}</h4>
+        <div className="rounded-xl border border-[#E1E5E8] border-t-3 border-t-[#F5A900] bg-white p-4 shadow-2xs">
+          <p className="text-[11px] font-bold text-[#536778] uppercase tracking-wider">Machines</p>
+          <h4 className="mt-1 text-2xl font-extrabold text-[#D98F00]">{machines.length}</h4>
           <p className="text-[10px] text-emerald-600 font-medium mt-0.5">
             {machines.filter((m) => m.status === 'Active').length} Operational
           </p>
         </div>
 
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-2xs">
-          <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Processes</p>
-          <h4 className="mt-1 text-2xl font-extrabold text-slate-900">{processes.length}</h4>
+        <div className="rounded-xl border border-[#E1E5E8] border-t-3 border-t-[#0B3A70] bg-white p-4 shadow-2xs">
+          <p className="text-[11px] font-bold text-[#536778] uppercase tracking-wider">Processes</p>
+          <h4 className="mt-1 text-2xl font-extrabold text-[#0B3A70]">{processes.length}</h4>
           <p className="text-[10px] text-slate-400 mt-0.5">Line Stations</p>
         </div>
 
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-2xs">
-          <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Daily Capacity</p>
-          <h4 className="mt-1 text-2xl font-extrabold text-blue-600">
+        <div className="rounded-xl border border-[#E1E5E8] border-t-3 border-t-[#146C43] bg-white p-4 shadow-2xs">
+          <p className="text-[11px] font-bold text-[#536778] uppercase tracking-wider">Daily Capacity</p>
+          <h4 className="mt-1 text-2xl font-extrabold text-[#146C43]">
             {formatNumber(simResult.dailyCapacity)}
           </h4>
           <p className="text-[10px] text-slate-400 mt-0.5">pcs / day</p>
         </div>
 
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-2xs">
-          <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Avg SAM</p>
-          <h4 className="mt-1 text-2xl font-extrabold text-amber-600">
+        <div className="rounded-xl border border-[#E1E5E8] border-t-3 border-t-[#B89B73] bg-white p-4 shadow-2xs">
+          <p className="text-[11px] font-bold text-[#536778] uppercase tracking-wider">Avg SAM</p>
+          <h4 className="mt-1 text-2xl font-extrabold text-[#82633D]">
             {samSummary.averageSAMSec} s
           </h4>
           <p className="text-[10px] text-slate-400 mt-0.5">Standard Cycle</p>
         </div>
 
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-2xs">
-          <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Process Cost</p>
-          <h4 className="mt-1 text-xl font-extrabold text-slate-900">
+        <div className="rounded-xl border border-[#E1E5E8] border-t-3 border-t-[#5B95C7] bg-white p-4 shadow-2xs">
+          <p className="text-[11px] font-bold text-[#536778] uppercase tracking-wider">Process Cost</p>
+          <h4 className="mt-1 text-xl font-extrabold text-[#082B52]">
             {formatCurrencyBDT(totalProcessCost)}
           </h4>
           <p className="text-[10px] text-slate-400 mt-0.5">Monthly Section</p>
